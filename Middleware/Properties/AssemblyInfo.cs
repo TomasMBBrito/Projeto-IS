@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("SOMIOD")]
+[assembly: AssemblyTitle("Middleware")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("SOMIOD")]
+[assembly: AssemblyProduct("Middleware")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("75a9a526-126b-4740-a0d0-90d7db8f1e3c")]
+[assembly: Guid("1fa7d8ea-5576-45a3-80db-25abbba5e80f")]
 
 // Version information for an assembly consists of the following four values:
 //
