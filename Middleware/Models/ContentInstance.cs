@@ -9,10 +9,10 @@ namespace Middleware.Models
     {
         public int Id { get; set; }
         public string Name { get; set; }
-        public string contentType { get; set; }
+        public string ContentType { get; set; }
 
         public int ContainerId { get; set; }
-        public string content { get; set; }
+        public string Content { get; set; }
         public DateTime Created_at { get; set; }
     }
 }

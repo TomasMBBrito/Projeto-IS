@@ -11,8 +11,8 @@ namespace Middleware.Models
         public string Name { get; set; }
 
         public int ContainerId { get; set; }
-        public int evt { get; set; }
-        public string content { get; set; }
+        public int Evt { get; set; }
+        public string Content { get; set; }
         public DateTime Created_at { get; set; }
     }
 }
