@@ -57,30 +57,41 @@ namespace Middleware.Controllers
         [Route("")]
         public IHttpActionResult CreateApplication([FromBody] CreateResourceRequest request)
         {
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                con.Open();
-                SqlCommand cmd = new SqlCommand("INSERT INTO Applications VALUES (@Name,@Created_at)", con);
-                cmd.Parameters.AddWithValue("@Name", request.ResourceName);
-                cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
+            if (request == null)
+                return BadRequest("Request body is required.");
 
-                int n_rows = cmd.ExecuteNonQuery();
-                if(n_rows > 0)
+            if (request.ResType?.ToLower() != "application")
+                return BadRequest("Invalid resource type. Expected 'application'.");
+
+            if (string.IsNullOrWhiteSpace(request.ResourceName))
+                return BadRequest("Resource name is required.");
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
                 {
-                    return Created($"api/somiod/{request.ResourceName}","Application"); ;
-                }
-                else
-                {
-                    return BadRequest();
+                    con.Open();
+                    SqlCommand cmd = new SqlCommand("INSERT INTO Applications VALUES (@Name, @Created_at); SELECT CAST(SCOPE_IDENTITY() AS INT);", con);
+                    cmd.Parameters.AddWithValue("@Name", request.ResourceName);
+                    cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
+
+                    int newId = (int)cmd.ExecuteScalar();
+
+                    var app = new Application
+                    {
+                        Id = newId,
+                        Name = request.ResourceName,
+                        Created_at = DateTime.UtcNow
+                    };
+
+                    return Created($"api/somiod/{app.Name}", app);
                 }
             }
-
-
-            //if (request == null)
-            //    return BadRequest("Request body is required.");
-
-            //if (request.ResType?.ToLower() != "application")
-            //    return BadRequest("Invalid resource type. Expected 'application'.");
+            catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601) // Violation of unique constraint - Resource-name
+            {
+                return Conflict();
+                //MELHORAR CATCH
+            }
+        }
 
             //if (string.IsNullOrWhiteSpace(request.ResourceName))
             //    return BadRequest("Resource name is required.");
@@ -97,7 +108,6 @@ namespace Middleware.Controllers
 
             //applications.Add(app);
             //return Created($"api/somiod/{app.Name}", app);
-        }
 
         [HttpGet]
         [Route("test/test/test")]
@@ -132,6 +142,116 @@ namespace Middleware.Controllers
         }
 
         //GET APPLICATION OR DISCOVER RELATED TO APPLICATIONS
+
+        [HttpGet]
+        [Route("{appName}")]
+        public IHttpActionResult GetApplicationOrDiscoverRelatedTo(string appName)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+
+                    // First, get the application
+                    SqlCommand appCmd = new SqlCommand("SELECT Id, Name, Created_at FROM Applications WHERE Name = @Name", con);
+                    appCmd.Parameters.AddWithValue("@Name", appName);
+
+                    SqlDataReader appReader = appCmd.ExecuteReader();
+
+                    if (!appReader.Read())
+                    {
+                        appReader.Close();
+                        return NotFound();
+                    }
+
+                    var app = new Application
+                    {
+                        Id = (int)appReader["Id"],
+                        Name = (string)appReader["Name"],
+                        Created_at = (DateTime)appReader["Created_at"]
+                    };
+
+                    appReader.Close();
+
+                    // Check if somiod-discover header exists
+                    IEnumerable<string> headerValues;
+                    if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
+                    {
+                        string discoveryType = headerValues.FirstOrDefault();
+                        List<string> paths = new List<string>();
+
+                        if (discoveryType == "container")
+                        {
+                            SqlCommand containerCmd = new SqlCommand(
+                                "SELECT Name FROM Containers WHERE ApplicationId = @AppId", con);
+                            containerCmd.Parameters.AddWithValue("@AppId", app.Id);
+
+                            SqlDataReader containerReader = containerCmd.ExecuteReader();
+                            while (containerReader.Read())
+                            {
+                                string containerName = containerReader.GetString(0);
+                                paths.Add($"/api/somiod/{appName}/{containerName}");
+                            }
+                            containerReader.Close();
+                        }
+                        else if (discoveryType == "content-instance")
+                        {
+                            SqlCommand ciCmd = new SqlCommand(@"
+                                SELECT c.Name, ci.Name 
+                                FROM Content_Instances ci
+                                INNER JOIN Containers c ON ci.ContainerId = c.Id
+                                WHERE c.ApplicationId = @AppId", con);
+                            ciCmd.Parameters.AddWithValue("@AppId", app.Id);
+
+                            SqlDataReader ciReader = ciCmd.ExecuteReader();
+                            while (ciReader.Read())
+                            {
+                                string containerName = ciReader.GetString(0);
+                                string ciName = ciReader.GetString(1);
+                                paths.Add($"/api/somiod/{appName}/{containerName}/{ciName}");
+                            }
+                            ciReader.Close();
+                        }
+                        else if (discoveryType == "subscription")
+                        {
+                            SqlCommand subCmd = new SqlCommand(@"
+                                SELECT c.Name, s.Name 
+                                FROM Subscriptions s
+                                INNER JOIN Containers c ON s.ContainerId = c.Id
+                                WHERE c.ApplicationId = @AppId", con);
+                            subCmd.Parameters.AddWithValue("@AppId", app.Id);
+
+                            SqlDataReader subReader = subCmd.ExecuteReader();
+                            while (subReader.Read())
+                            {
+                                string containerName = subReader.GetString(0);
+                                string subName = subReader.GetString(1);
+                                paths.Add($"/api/somiod/{appName}/{containerName}/{subName}");
+                            }
+                            subReader.Close();
+                        }
+                        else
+                        {
+                            return BadRequest("Invalid somiod-discover header.");
+                        }
+
+                            return Ok(paths);
+                    }
+                    else
+                    {
+                        // No header - return the application
+                        return Ok(app);
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+        /*
 
         [HttpGet]
         [Route("{appName}")]
@@ -196,82 +316,105 @@ namespace Middleware.Controllers
                 // Header doesn't exist - regular GET - GET APPLICATION
                 return Ok(app);
             }
-        }
+        */
+
+        
 
         [HttpPut]
         [Route("{appName}")]
         public IHttpActionResult UpdateApplication(string appName,[FromBody] CreateResourceRequest request)
         {
-            //if (request == null)
-            //{
-            //    return BadRequest("Request body is required.");
-            //}
-
-            //var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
-
-            //if (app == null)
-            //{
-            //    return NotFound();
-            //}
-
-            ////REVER
-            //if (!appName.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase) &&
-            //    applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
-            //{
-            //    return Conflict();
-            //}
-
-
-            //app.Name = request.ResourceName;
-            //return Ok(app);
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
+            if (request == null)
             {
-                con.Open();
-                SqlCommand cmd = new SqlCommand("UPDATE Applications SET Name = @Name WHere Name = @appName", con);
-                cmd.Parameters.AddWithValue("@Name", request.ResourceName);
-                cmd.Parameters.AddWithValue("@appName", appName);
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
+                return BadRequest("Request body is required.");
+            }
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
                 {
-                    return Ok();
+                    con.Open();
+
+                    // First, get the application
+                    SqlCommand appCmd = new SqlCommand("SELECT Id, Name, Created_at FROM Applications WHERE Name = @Name", con);
+                    appCmd.Parameters.AddWithValue("@Name", appName);
+
+                    SqlDataReader appReader = appCmd.ExecuteReader();
+
+                    if (!appReader.Read())
+                    {
+                        appReader.Close();
+                        return NotFound();
+                    }
+
+                    appReader.Close();
+
+                    SqlCommand cmd = new SqlCommand("UPDATE Applications SET Name = @Name WHere Name = @appName", con);
+                    cmd.Parameters.AddWithValue("@Name", request.ResourceName);
+                    cmd.Parameters.AddWithValue("@appName", appName);
+                    int n_rows = cmd.ExecuteNonQuery();
+                    if (n_rows > 0)
+                    {
+                        //PUT NEW APP INSIDE
+                        return Ok();
+                    }
+                    else
+                    {
+                        return BadRequest();
+                    }
                 }
-                else
-                {
-                    return BadRequest();
-                }
+            }   
+            catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601) // Violation of unique constraint - Resource-name
+            {
+                return Conflict();
+                //MELHORAR CATCH
             }
         }
+        
 
         [HttpDelete]
         [Route("{appName}")]
         public IHttpActionResult DeleteApplication(string appName)
         {
-
-            //var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
-            //if (app == null)
-            //{
-            //    return NotFound();
-            //}
-            //applications.Remove(app);
-            //return Ok();
-
-            using (SqlConnection con = new SqlConnection(Connectstring)) 
+            try
             {
-                con.Open();
-                SqlCommand cmd = new SqlCommand("DELETE FROM Applications WHERE Name = @name");
-                cmd.Parameters.AddWithValue("@name", appName);
-                int n_rows = cmd.ExecuteNonQuery();
-                if(n_rows > 0)
+                using (SqlConnection con = new SqlConnection(Connectstring))
                 {
-                    return Ok();
-                }
-                else
-                {
-                    return BadRequest();
+                    con.Open();
+
+                    // First, get the application
+                    SqlCommand appCmd = new SqlCommand("SELECT Id, Name, Created_at FROM Applications WHERE Name = @Name", con);
+                    appCmd.Parameters.AddWithValue("@Name", appName);
+
+                    SqlDataReader appReader = appCmd.ExecuteReader();
+
+                    if (!appReader.Read())
+                    {
+                        appReader.Close();
+                        return NotFound();
+                    }
+
+                    appReader.Close();
+
+                    SqlCommand cmd = new SqlCommand("DELETE FROM Applications WHERE Name = @name", con);
+                    cmd.Parameters.AddWithValue("@name", appName);
+                    int n_rows = cmd.ExecuteNonQuery();
+                    if (n_rows > 0)
+                    {
+                        return Ok();
+                    }
+                    else
+                    {
+                        return BadRequest();
+                    }
                 }
             }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
         }   
+        /*
 
         // ============================================
         // CONTAINER ENDPOINTS
@@ -489,5 +632,6 @@ namespace Middleware.Controllers
                 }
             }
         }
+        */
     }
 }
