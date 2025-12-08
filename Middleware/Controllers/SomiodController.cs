@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using System.Data.SqlClient;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
@@ -15,6 +16,9 @@ namespace Middleware.Controllers
     [RoutePrefix("api/somiod")]
     public class SomiodController : ApiController
     {
+        string Connectstring = Properties.Settings.Default.connectstr;
+
+
         // HARDCODED DATA FOR TESTING PURPOSES
         private static List<Application> applications = new List<Application>()
         {
@@ -74,6 +78,37 @@ namespace Middleware.Controllers
 
             applications.Add(app);
             return Created($"api/somiod/{app.Name}", app);
+        }
+
+        [HttpGet]
+        [Route("test/test/test")]
+        public IHttpActionResult Gettestapp()
+        {
+            Application app = null;
+
+
+            using (SqlConnection con = new SqlConnection(Connectstring))
+            {
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
+                cmd.Connection.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        app = new Application();
+                        app.Id = (int)reader["Id"];
+                        app.Name = (string)reader["Name"];
+                    }
+                }
+            }
+            if (app == null)
+            {
+                return NotFound();
+            }
+            else
+            {
+                return Ok(app);
+            }
         }
 
         //GET APPLICATION OR DISCOVER RELATED TO APPLICATIONS
@@ -236,80 +271,34 @@ namespace Middleware.Controllers
 
             return Ok(container);
         }
-        /*
-        [HttpGet]
-        [Route("")]
-        [Route("{appName}")]
-        public IHttpActionResult DiscoverContainers(string appName = null)
-        {
-            IEnumerable<String> header_values;
-            if (!Request.Headers.TryGetValues("somiod-discovery", out header_values))
-                return BadRequest("Missing somiod-discovery header");
-
-            var discoveryType = header_values.FirstOrDefault();
-            if (discoveryType != "container")
-                return BadRequest("Invalid discovery type for containers");
-
-            List<string> paths = new List<string>();
-
-            // Se appName foi especificado, descobrir apenas containers dessa app
-            if (!string.IsNullOrEmpty(appName))
-            {
-                var app = applications.FirstOrDefault(a => a.Name == appName);
-                if (app == null)
-                    return NotFound();
-
-                paths = containers
-                    .Where(c => c.AplicationId == app.Id)
-                    .Select(c => $"/api/somiod/{appName}/{c.Name}")
-                    .ToList();
-            }
-            else
-            {
-                // Descobrir todos os containers (recursivamente)
-                foreach (var app in applications)
-                {
-                    var appContainers = containers
-                        .Where(c => c.AplicationId == app.Id)
-                        .Select(c => $"/api/somiod/{app.Name}/{c.Name}");
-
-                    paths.AddRange(appContainers);
-                }
-            }
-
-            return Ok(paths);
-
-        }
-        */
 
         [HttpPut]
         [Route("{appName}/{containerName}")]
-        public IHttpActionResult UpdateContainer(string appName, string containerName, [FromBody] Container updatedContainer)
+        public IHttpActionResult UpdateContainer(string appName, string containerName, [FromBody] CreateResourceRequest request)
         {
-            if (updatedContainer == null || string.IsNullOrEmpty(updatedContainer.Name))
+            if(request == null)
             {
-                return BadRequest("Invalid data");
+                return BadRequest();
             }
 
-            Application app = applications.FirstOrDefault(a => a.Name == appName);
+            Application app = applications.FirstOrDefault(a => a.Name.Equals(appName,StringComparison.OrdinalIgnoreCase));
             if (app == null)
             {
                 return NotFound();
             }
 
-            Container container = containers.FirstOrDefault(c => c.Name == containerName && c.AplicationId == app.Id);
+            Container container = containers.FirstOrDefault(c => c.Name.Equals(containerName,StringComparison.OrdinalIgnoreCase) && c.AplicationId == app.Id);
             if (container == null)
             {
                 return NotFound();
             }
 
-            if (updatedContainer.Name != containerName &&
-               containers.Any(c => c.Name == updatedContainer.Name && c.AplicationId == app.Id))
+            if (containers.Any(c => c.Name == request.ResourceName && c.AplicationId == app.Id) && !containerName.Equals(request.ResourceName,StringComparison.OrdinalIgnoreCase))
             {
                 return Conflict();
             }
 
-            container.Name = updatedContainer.Name;
+            container.Name = request.ResourceName;
 
             return Ok(container);
         }
@@ -318,7 +307,7 @@ namespace Middleware.Controllers
         [Route("{appName}/{containerName}")]
         public IHttpActionResult DeleteContainer(string appName, string containerName)
         {
-            Models.Application app = applications.FirstOrDefault(a => a.Name == appName);
+            Application app = applications.FirstOrDefault(a => a.Name == appName);
             if (app == null)
             {
                 return NotFound();
