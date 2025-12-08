@@ -20,33 +20,33 @@ namespace Middleware.Controllers
 
 
         // HARDCODED DATA FOR TESTING PURPOSES
-        private static List<Application> applications = new List<Application>()
-        {
-            new Application(){ Id=1, Name="App1", Created_at=DateTime.UtcNow },
-            new Application(){ Id=2, Name="App2", Created_at=DateTime.UtcNow },
-            new Application(){ Id=3, Name="App3", Created_at=DateTime.UtcNow }
-        };
+        //private static List<Application> applications = new List<Application>()
+        //{
+        //    new Application(){ Id=1, Name="App1", Created_at=DateTime.UtcNow },
+        //    new Application(){ Id=2, Name="App2", Created_at=DateTime.UtcNow },
+        //    new Application(){ Id=3, Name="App3", Created_at=DateTime.UtcNow }
+        //};
 
-        private static List<Container> containers = new List<Container>()
-        {
-            new Container(){ Id=1, Name="Container1", AplicationId=1, Created_at=DateTime.UtcNow },
-            new Container(){ Id=2, Name="Container2", AplicationId=2, Created_at=DateTime.UtcNow },
-            new Container(){ Id=3, Name="Container3", AplicationId=1, Created_at=DateTime.UtcNow }
-        };
+        //private static List<Container> containers = new List<Container>()
+        //{
+        //    new Container(){ Id=1, Name="Container1", AplicationId=1, Created_at=DateTime.UtcNow },
+        //    new Container(){ Id=2, Name="Container2", AplicationId=2, Created_at=DateTime.UtcNow },
+        //    new Container(){ Id=3, Name="Container3", AplicationId=1, Created_at=DateTime.UtcNow }
+        //};
 
-        private static List<ContentInstance> contentInstances = new List<ContentInstance>()
-        {
-            new ContentInstance(){ Id=1, Name="Content1", ContainerId=1, Created_at=DateTime.UtcNow },
-            new ContentInstance(){ Id=2, Name="Content2", ContainerId=2, Created_at=DateTime.UtcNow },
-            new ContentInstance(){ Id=3, Name="Content3", ContainerId=1, Created_at=DateTime.UtcNow }
-        };
+        //private static List<ContentInstance> contentInstances = new List<ContentInstance>()
+        //{
+        //    new ContentInstance(){ Id=1, Name="Content1", ContainerId=1, Created_at=DateTime.UtcNow },
+        //    new ContentInstance(){ Id=2, Name="Content2", ContainerId=2, Created_at=DateTime.UtcNow },
+        //    new ContentInstance(){ Id=3, Name="Content3", ContainerId=1, Created_at=DateTime.UtcNow }
+        //};
 
-        private static List<Subscription> subscriptions = new List<Subscription>()
-        {
-            new Subscription(){ Id=1, Name="Subscription1", ContainerId=1, Created_at=DateTime.UtcNow },
-            new Subscription(){ Id=2, Name="Subscription2", ContainerId=2, Created_at=DateTime.UtcNow },
-            new Subscription(){ Id=3, Name="Subscription3", ContainerId=1, Created_at=DateTime.UtcNow }
-        };
+        //private static List<Subscription> subscriptions = new List<Subscription>()
+        //{
+        //    new Subscription(){ Id=1, Name="Subscription1", ContainerId=1, Created_at=DateTime.UtcNow },
+        //    new Subscription(){ Id=2, Name="Subscription2", ContainerId=2, Created_at=DateTime.UtcNow },
+        //    new Subscription(){ Id=3, Name="Subscription3", ContainerId=1, Created_at=DateTime.UtcNow }
+        //};
 
         // ============================================
         // APPLICATION ENDPOINTS
@@ -57,27 +57,46 @@ namespace Middleware.Controllers
         [Route("")]
         public IHttpActionResult CreateApplication([FromBody] CreateResourceRequest request)
         {
-            if (request == null)
-                return BadRequest("Request body is required.");
-
-            if (request.ResType?.ToLower() != "application")
-                return BadRequest("Invalid resource type. Expected 'application'.");
-
-            if (string.IsNullOrWhiteSpace(request.ResourceName))
-                return BadRequest("Resource name is required.");
-
-            if (applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
-                return Conflict();
-
-            var app = new Application
+            using (SqlConnection con = new SqlConnection(Connectstring))
             {
-                Id = applications.Any() ? applications.Max(a => a.Id) + 1 : 1,
-                Name = request.ResourceName,
-                Created_at = DateTime.UtcNow
-            };
+                con.Open();
+                SqlCommand cmd = new SqlCommand("INSERT INTO Applications VALUES (@Name,@Created_at)", con);
+                cmd.Parameters.AddWithValue("@Name", request.ResourceName);
+                cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
 
-            applications.Add(app);
-            return Created($"api/somiod/{app.Name}", app);
+                int n_rows = cmd.ExecuteNonQuery();
+                if(n_rows > 0)
+                {
+                    return Created($"api/somiod/{request.ResourceName}","Application"); ;
+                }
+                else
+                {
+                    return BadRequest();
+                }
+            }
+
+
+            //if (request == null)
+            //    return BadRequest("Request body is required.");
+
+            //if (request.ResType?.ToLower() != "application")
+            //    return BadRequest("Invalid resource type. Expected 'application'.");
+
+            //if (string.IsNullOrWhiteSpace(request.ResourceName))
+            //    return BadRequest("Resource name is required.");
+
+            //if (applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
+            //    return Conflict();
+
+            //var app = new Application
+            //{
+            //    Id = applications.Any() ? applications.Max(a => a.Id) + 1 : 1,
+            //    Name = request.ResourceName,
+            //    Created_at = DateTime.UtcNow
+            //};
+
+            //applications.Add(app);
+            //return Created($"api/somiod/{app.Name}", app);
         }
 
         [HttpGet]
@@ -89,6 +108,7 @@ namespace Middleware.Controllers
 
             using (SqlConnection con = new SqlConnection(Connectstring))
             {
+
                 SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
                 cmd.Connection.Open();
                 using (SqlDataReader reader = cmd.ExecuteReader())
@@ -180,43 +200,77 @@ namespace Middleware.Controllers
 
         [HttpPut]
         [Route("{appName}")]
-        public IHttpActionResult UpdateApplication(string appName, [FromBody] CreateResourceRequest request)
+        public IHttpActionResult UpdateApplication(string appName,[FromBody] CreateResourceRequest request)
         {
-            if (request == null)
+            //if (request == null)
+            //{
+            //    return BadRequest("Request body is required.");
+            //}
+
+            //var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
+
+            //if (app == null)
+            //{
+            //    return NotFound();
+            //}
+
+            ////REVER
+            //if (!appName.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase) &&
+            //    applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
+            //{
+            //    return Conflict();
+            //}
+
+
+            //app.Name = request.ResourceName;
+            //return Ok(app);
+
+            using (SqlConnection con = new SqlConnection(Connectstring))
             {
-                return BadRequest("Request body is required.");
+                con.Open();
+                SqlCommand cmd = new SqlCommand("UPDATE Applications SET Name = @Name WHere Name = @appName", con);
+                cmd.Parameters.AddWithValue("@Name", request.ResourceName);
+                cmd.Parameters.AddWithValue("@appName", appName);
+                int n_rows = cmd.ExecuteNonQuery();
+                if (n_rows > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest();
+                }
             }
-
-            var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
-            
-            if (app == null)
-            {
-                return NotFound();
-            }
-
-            //REVER
-            if (!appName.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase) &&
-                applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
-            {
-                return Conflict();
-            }
-
-
-            app.Name = request.ResourceName;
-            return Ok(app);
         }
 
         [HttpDelete]
         [Route("{appName}")]
         public IHttpActionResult DeleteApplication(string appName)
         {
-            var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
-            if (app == null)
+
+            //var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
+            //if (app == null)
+            //{
+            //    return NotFound();
+            //}
+            //applications.Remove(app);
+            //return Ok();
+
+            using (SqlConnection con = new SqlConnection(Connectstring)) 
             {
-                return NotFound();
+                con.Open();
+                SqlCommand cmd = new SqlCommand("DELETE FROM Applications WHERE Name = @name");
+                cmd.Parameters.AddWithValue("@name", appName);
+                int n_rows = cmd.ExecuteNonQuery();
+                if(n_rows > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest();
+                }
             }
-            applications.Remove(app);
-            return Ok();
         }   
 
         // ============================================
@@ -226,102 +280,214 @@ namespace Middleware.Controllers
         // POST api/somiod/{appName} - Create Container
         [HttpPost]
         [Route("{appName}")]
-        public IHttpActionResult CreateContainer(string appName, [FromBody] Container container)
+        public IHttpActionResult CreateContainer(string appName, [FromBody] CreateResourceRequest request)
         {
-            if (container == null || string.IsNullOrEmpty(appName) || string.IsNullOrEmpty(container.Name))
+            //if (container == null || string.IsNullOrEmpty(appName) || string.IsNullOrEmpty(container.Name))
+            //{
+            //    return BadRequest("Invalid data");
+            //}
+
+            //Application app = applications.FirstOrDefault(a => a.Name == appName);
+            //if (app == null)
+            //{
+            //    return NotFound();
+            //}
+
+            //if (containers.Any(c => c.Name == container.Name && c.AplicationId == app.Id))
+            //{
+            //    return Conflict();
+            //}
+
+            //container.Id = containers.Max(c => c.Id) + 1;
+            //container.AplicationId = app.Id;
+            //container.Created_at = DateTime.Now;
+
+            //containers.Add(container);
+
+            //return Created($"api/somiod/{appName}/{container.Name}", container);
+            Application app = null;
+            using (SqlConnection con = new SqlConnection(Connectstring))
             {
-                return BadRequest("Invalid data");
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name");
+                cmd.Parameters.AddWithValue("@name", appName);
+                cmd.Connection.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        app = new Application();
+                        app.Id = (int)reader["Id"];
+                        app.Name = (string)reader["Name"];
+                    }
+                }
+
+                if (app == null)
+                {
+                    return NotFound();
+                }
+
+                cmd = new SqlCommand("INSERT INTO Containers VALUES (@name,@app_id,@Created_at)", con);
+                cmd.Parameters.AddWithValue("@name", request.ResourceName);
+                cmd.Parameters.AddWithValue("@app_id",app.Id);
+                cmd.Parameters.AddWithValue("@Created_at",DateTime.UtcNow);
+                int n_rows = cmd.ExecuteNonQuery();
+                if(n_rows > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest();
+                }
             }
-
-            Application app = applications.FirstOrDefault(a => a.Name == appName);
-            if (app == null)
-            {
-                return NotFound();
-            }
-
-            if (containers.Any(c => c.Name == container.Name && c.AplicationId == app.Id))
-            {
-                return Conflict();
-            }
-
-            container.Id = containers.Max(c => c.Id) + 1;
-            container.AplicationId = app.Id;
-            container.Created_at = DateTime.Now;
-
-            containers.Add(container);
-
-            return Created($"api/somiod/{appName}/{container.Name}", container);
         }
 
         [HttpGet]
         [Route("{appName}/{containerName}")]
         public IHttpActionResult GetContainer(string appName, string containerName)
         {
-            Models.Application app = applications.FirstOrDefault(a => a.Name == appName);
-            if (app == null)
-            {
-                return NotFound();
-            }
+            //Models.Application app = applications.FirstOrDefault(a => a.Name == appName);
+            //if (app == null)
+            //{
+            //    return NotFound();
+            //}
 
-            Container container = containers.FirstOrDefault(c => c.Name == containerName && c.AplicationId == app.Id);
-            if (container == null)
-            {
-                return NotFound();
-            }
+            //Container container = containers.FirstOrDefault(c => c.Name == containerName && c.AplicationId == app.Id);
+            //if (container == null)
+            //{
+            //    return NotFound();
+            //}
 
-            return Ok(container);
+            //return Ok(container);
+            //Application app = null;
+            Container container = null;
+            using (SqlConnection con = new SqlConnection(Connectstring))
+            {
+                //SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name");
+                //cmd.Parameters.AddWithValue("@name", appName);
+                //cmd.Connection.Open();
+                //using (SqlDataReader reader = cmd.ExecuteReader())
+                //{
+                //    if (reader.Read())
+                //    {
+                //        app = new Application();
+                //        app.Id = (int)reader["Id"];
+                //        app.Name = (string)reader["Name"];
+                //    }
+                //}
+
+                //if(app == null)
+                //{
+                //    return NotFound();
+                //}
+
+
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Containers WHERE Name = @Name", con);
+                cmd.Parameters.AddWithValue("@name", containerName);
+                using(SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        container = new Container();
+                        container.Name = (string)reader["Name"];
+                        container.Id = (int)reader["Id"];
+                    }
+                }
+
+                if (container == null)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    return Ok(container);
+                }
+            }
         }
 
         [HttpPut]
         [Route("{appName}/{containerName}")]
         public IHttpActionResult UpdateContainer(string appName, string containerName, [FromBody] CreateResourceRequest request)
         {
-            if(request == null)
+            //if(request == null)
+            //{
+            //    return BadRequest();
+            //}
+
+            //Application app = applications.FirstOrDefault(a => a.Name.Equals(appName,StringComparison.OrdinalIgnoreCase));
+            //if (app == null)
+            //{
+            //    return NotFound();
+            //}
+
+            //Container container = containers.FirstOrDefault(c => c.Name.Equals(containerName,StringComparison.OrdinalIgnoreCase) && c.AplicationId == app.Id);
+            //if (container == null)
+            //{
+            //    return NotFound();
+            //}
+
+            //if (containers.Any(c => c.Name == request.ResourceName && c.AplicationId == app.Id) && !containerName.Equals(request.ResourceName,StringComparison.OrdinalIgnoreCase))
+            //{
+            //    return Conflict();
+            //}
+
+            //container.Name = request.ResourceName;
+
+            //return Ok(container);
+
+            using (SqlConnection con = new SqlConnection(Connectstring))
             {
-                return BadRequest();
+                con.Open();
+                SqlCommand cmd = new SqlCommand("UPDATE Containers SET Name = @Name WHere Name = @contName", con);
+                cmd.Parameters.AddWithValue("@Name", request.ResourceName);
+                cmd.Parameters.AddWithValue("@contName", containerName);
+                int n_rows = cmd.ExecuteNonQuery();
+                if (n_rows > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest();
+                }
             }
-
-            Application app = applications.FirstOrDefault(a => a.Name.Equals(appName,StringComparison.OrdinalIgnoreCase));
-            if (app == null)
-            {
-                return NotFound();
-            }
-
-            Container container = containers.FirstOrDefault(c => c.Name.Equals(containerName,StringComparison.OrdinalIgnoreCase) && c.AplicationId == app.Id);
-            if (container == null)
-            {
-                return NotFound();
-            }
-
-            if (containers.Any(c => c.Name == request.ResourceName && c.AplicationId == app.Id) && !containerName.Equals(request.ResourceName,StringComparison.OrdinalIgnoreCase))
-            {
-                return Conflict();
-            }
-
-            container.Name = request.ResourceName;
-
-            return Ok(container);
         }
 
         [HttpDelete]
         [Route("{appName}/{containerName}")]
         public IHttpActionResult DeleteContainer(string appName, string containerName)
         {
-            Application app = applications.FirstOrDefault(a => a.Name == appName);
-            if (app == null)
+            //Application app = applications.FirstOrDefault(a => a.Name == appName);
+            //if (app == null)
+            //{
+            //    return NotFound();
+            //}
+
+            //Container container = containers.FirstOrDefault(c => c.Name == containerName && c.AplicationId == app.Id);
+            //if (container == null)
+            //{
+            //    return NotFound();
+            //}
+
+            //containers.Remove(container);
+
+            //return Ok();
+
+            using (SqlConnection con = new SqlConnection(Connectstring))
             {
-                return NotFound();
+                con.Open();
+                SqlCommand cmd = new SqlCommand("DELETE FROM Containers WHERE Name = @name");
+                cmd.Parameters.AddWithValue("@name", containerName);
+                int n_rows = cmd.ExecuteNonQuery();
+                if (n_rows > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest();
+                }
             }
-
-            Container container = containers.FirstOrDefault(c => c.Name == containerName && c.AplicationId == app.Id);
-            if (container == null)
-            {
-                return NotFound();
-            }
-
-            containers.Remove(container);
-
-            return Ok();
         }
     }
 }
