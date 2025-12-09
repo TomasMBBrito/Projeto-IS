@@ -12,7 +12,7 @@ namespace Middleware.Models
 
         public int ContainerId { get; set; }
         public int Evt { get; set; }
-        public string Content { get; set; }
+        public string Endpoint { get; set; }
         public DateTime Created_at { get; set; }
     }
 }

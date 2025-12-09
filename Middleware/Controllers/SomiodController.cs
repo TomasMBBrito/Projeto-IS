@@ -109,7 +109,7 @@ namespace Middleware.Controllers
                                 string appName = (string)appReader["Name"];
                                 paths.Add($"/api/somiod/{appName}");
                             }
-                            appReader.Close();                          
+                            appReader.Close();
                         }
                         else
                         {
@@ -139,12 +139,14 @@ namespace Middleware.Controllers
             if (request == null)
                 return BadRequest("Request body is required.");
 
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Created($"api/somiod/{request.ResourceName}", "Application"); ;
-                }
-                else
+            if (request.ResType?.ToLower() != "application")
+                return BadRequest("Invalid resource type. Expected 'application'.");
+
+            if (string.IsNullOrWhiteSpace(request.ResourceName))
+                return BadRequest("Resource name is required.");
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
                 {
                     con.Open();
                     SqlCommand cmd = new SqlCommand("INSERT INTO Applications VALUES (@Name, @Created_at); SELECT CAST(SCOPE_IDENTITY() AS INT);", con);
@@ -167,6 +169,54 @@ namespace Middleware.Controllers
             {
                 return Conflict();
                 //MELHORAR CATCH
+            }
+        }
+
+        //if (string.IsNullOrWhiteSpace(request.ResourceName))
+        //    return BadRequest("Resource name is required.");
+
+        //if (applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
+        //    return Conflict();
+
+        //var app = new Application
+        //{
+        //    Id = applications.Any() ? applications.Max(a => a.Id) + 1 : 1,
+        //    Name = request.ResourceName,
+        //    Created_at = DateTime.UtcNow
+        //};
+
+        //applications.Add(app);
+        //return Created($"api/somiod/{app.Name}", app);
+
+        [HttpGet]
+        [Route("test/test/test")]
+        public IHttpActionResult Gettestapp()
+        {
+            Application app = null;
+
+
+            using (SqlConnection con = new SqlConnection(Connectstring))
+            {
+
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
+                cmd.Connection.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        app = new Application();
+                        app.Id = (int)reader["Id"];
+                        app.Name = (string)reader["Name"];
+                    }
+                }
+            }
+            if (app == null)
+            {
+                return NotFound();
+            }
+            else
+            {
+                return Ok(app);
             }
         }
 
@@ -280,6 +330,8 @@ namespace Middleware.Controllers
             }
         }
 
+
+
         [HttpPut]
         [Route("{appName}")]
         public IHttpActionResult UpdateApplication(string appName, [FromBody] CreateResourceRequest request)
@@ -336,26 +388,9 @@ namespace Middleware.Controllers
         [Route("{appName}")]
         public IHttpActionResult DeleteApplication(string appName)
         {
-
-            //var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
-            //if (app == null)
-            //{
-            //    return NotFound();
-            //}
-            //applications.Remove(app);
-            //return Ok();
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
+            try
             {
-                con.Open();
-                SqlCommand cmd = new SqlCommand("DELETE FROM Applications WHERE Name = @name");
-                cmd.Parameters.AddWithValue("@name", appName);
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Ok();
-                }
-                else
+                using (SqlConnection con = new SqlConnection(Connectstring))
                 {
                     con.Open();
 
@@ -386,7 +421,12 @@ namespace Middleware.Controllers
                     }
                 }
             }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
         }
+
 
         // ============================================
         // CONTAINER ENDPOINTS
@@ -397,12 +437,12 @@ namespace Middleware.Controllers
         [Route("{appName}")]
         public IHttpActionResult CreateContainer(string appName, [FromBody] CreateResourceRequest request)
         {
-            if(request == null)
+            if (request == null)
             {
                 return BadRequest("Body is required");
             }
 
-            if(request.ResType?.ToLower() != "container")
+            if (request.ResType?.ToLower() != "container")
             {
                 return BadRequest("Invalid resource type. Must be container");
             }
@@ -418,7 +458,7 @@ namespace Middleware.Controllers
                 using (SqlConnection con = new SqlConnection(Connectstring))
                 {
                     con.Open();
-                    SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name",con);
+                    SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name", con);
                     cmd.Parameters.AddWithValue("@name", appName);
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
@@ -441,7 +481,7 @@ namespace Middleware.Controllers
                     cmd.Parameters.AddWithValue("@name", request.ResourceName);
                     cmd.Parameters.AddWithValue("@app_id", app.Id);
                     cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
-                    int new_id = (int) cmd.ExecuteScalar();
+                    int new_id = (int)cmd.ExecuteScalar();
                     Container container = new Container
                     {
                         Id = new_id,
@@ -450,13 +490,13 @@ namespace Middleware.Controllers
                         Created_at = DateTime.UtcNow,
                     };
                     String container_name = container.Name;
-                    return Created($"api/somiod/{appName}/{container_name}",container);
+                    return Created($"api/somiod/{appName}/{container_name}", container);
                 }
             }
             catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
             {
                 return Conflict();
-            }                 
+            }
         }
 
         //[HttpGet]
@@ -472,7 +512,7 @@ namespace Middleware.Controllers
             Application app = null;
             using (SqlConnection con = new SqlConnection(Connectstring))
             {
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name",con);
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name", con);
                 cmd.Parameters.AddWithValue("@name", appName);
                 cmd.Connection.Open();
                 using (SqlDataReader reader = cmd.ExecuteReader())
@@ -490,64 +530,10 @@ namespace Middleware.Controllers
                     return NotFound();
                 }
 
-                cmd = new SqlCommand("INSERT INTO Containers VALUES (@name,@app_id,@Created_at)", con);
-                cmd.Parameters.AddWithValue("@name", request.ResourceName);
-                cmd.Parameters.AddWithValue("@app_id", app.Id);
-                cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Ok();
-                }
-                else
-                {
-                    return BadRequest();
-                }
-            }
-        }
-
-        [HttpGet]
-        [Route("{appName}/{containerName}")]
-        public IHttpActionResult GetContainer(string appName, string containerName)
-        {
-            //Models.Application app = applications.FirstOrDefault(a => a.Name == appName);
-            //if (app == null)
-            //{
-            //    return NotFound();
-            //}
-
-            //Container container = containers.FirstOrDefault(c => c.Name == containerName && c.AplicationId == app.Id);
-            //if (container == null)
-            //{
-            //    return NotFound();
-            //}
-
-            //return Ok(container);
-            //Application app = null;
-            Container container = null;
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                //SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name");
-                //cmd.Parameters.AddWithValue("@name", appName);
-                //cmd.Connection.Open();
-                //using (SqlDataReader reader = cmd.ExecuteReader())
-                //{
-                //    if (reader.Read())
-                //    {
-                //        app = new Application();
-                //        app.Id = (int)reader["Id"];
-                //        app.Name = (string)reader["Name"];
-                //    }
-                //}
-
-                //if(app == null)
-                //{
-                //    return NotFound();
-                //}
-
-
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Containers WHERE Name = @Name", con);
-                cmd.Parameters.AddWithValue("@name", containerName);
+                //con.Open();
+                cmd = new SqlCommand("SELECT * FROM Containers WHERE ApplicationId = @id AND Name = @Name", con);
+                cmd.Parameters.AddWithValue("@Name", containerName);
+                cmd.Parameters.AddWithValue("@id", app.Id);
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
@@ -769,7 +755,7 @@ namespace Middleware.Controllers
 
                     reader.Close();
 
-                    SqlCommand cmd = new SqlCommand("DELETE FROM Containers WHERE Name = @name AND ApplicationId = @appid",con);
+                    SqlCommand cmd = new SqlCommand("DELETE FROM Containers WHERE Name = @name AND ApplicationId = @appid", con);
                     cmd.Parameters.AddWithValue("@name", containerName);
                     cmd.Parameters.AddWithValue("@appid", app.Id);
                     int n_rows = cmd.ExecuteNonQuery();
@@ -786,231 +772,134 @@ namespace Middleware.Controllers
             catch (SqlException ex)
             {
                 return InternalServerError(ex);
-            }         
+            }
         }
 
-        // CREATE
-        // Adicionar resource (content-instance)
         [HttpPost]
         [Route("{appName}/{containerName}")]
-        public IHttpActionResult CreateContentInstance(string appName, string containerName, [FromBody] CreateResourceRequest request)
+        public IHttpActionResult CreateContentInstanceOrSubscription(string appName, string containerName, [FromBody] CreateResourceRequest request)
         {
-            Container container = null;
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
+            if (request == null)
             {
-                con.Open();
+                return BadRequest("Request body is required.");
+            }
 
-                // GET ao container
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Containers WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", containerName);
+            if(request.ResType?.ToLower() != "content-instance" && request.ResType?.ToLower() != "subscription")
+            {
+                return BadRequest("Invalid resource type!");
+            }
 
-                using (SqlDataReader reader = cmd.ExecuteReader())
+            String request_type = request.ResType.ToLower();
+
+            if (request_type == "content-instance")
+            {
+                if (request.Content == null)
                 {
-                    if (reader.Read())
+                    return BadRequest("Content is required");
+                }
+
+                if (request.ContentType == null)
+                {
+                    return BadRequest("Content-type is required");
+                }
+            }else if (request_type == "subscription")
+            {
+                if (request.Evt == null)
+                {
+                    return BadRequest("Evt is required");
+                }
+
+                if (request.Endpoint == null)
+                {
+                    return BadRequest("Endpoint is required");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ResourceName) || string.IsNullOrWhiteSpace(appName) || string.IsNullOrWhiteSpace(containerName))
+            {
+                return BadRequest("Resource name or application name or contianer name is required");
+            }
+
+            try
+            {
+                //Application app = null;
+                Container container = null;
+
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+                    SqlCommand app_cmd = new SqlCommand("SELECT c.id as ID FROM Containers c " +
+                        "INNER JOIN APPLICATIONS a ON c.ApplicationId = a.id " +
+                        "WHERE c.Name = @name AND a.name = @appname",con);
+                    app_cmd.Parameters.AddWithValue("@name", containerName);
+                    app_cmd.Parameters.AddWithValue("@appname", appName);
+
+                    using(SqlDataReader reader = app_cmd.ExecuteReader())
                     {
-                        container = new Container();
-                        container.Id = (int)reader["Id"];
-                        container.Name = (string)reader["Name"];
+                        if (reader.Read())
+                        {
+                            container = new Container();
+                            container.Id = (int)reader["ID"];
+                        }
                     }
-                }
 
-                if (container == null)
-                {
-                    return NotFound();
-                }
-
-                // Insert do content-instance
-                cmd = new SqlCommand("INSERT INTO ContentInstances VALUES (@name, @container_id, @Created_at)", con);
-                cmd.Parameters.AddWithValue("@name", request.ResourceName);
-                cmd.Parameters.AddWithValue("@container_id", container.Id);
-                cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
-
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Created($"api/somiod/{appName}/{containerName}/{request.ResourceName}", "ContentInstance");
-                }
-                else
-                {
-                    return BadRequest();
-                }
-            }
-        }
-
-        // CREATE
-        // Adicionar resource (subscription)
-        [HttpPost]
-        [Route("{appName}/{containerName}/subscription")]
-        public IHttpActionResult CreateSubscription(string appName, string containerName, [FromBody] CreateResourceRequest request)
-        {
-            Container container = null;
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                con.Open();
-
-                // GET ao container
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Containers WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", containerName);
-
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
+                    if(container == null)
                     {
-                        container = new Container();
-                        container.Id = (int)reader["Id"];
-                        container.Name = (string)reader["Name"];
+                        return NotFound();
                     }
-                }
 
-                if (container == null)
-                {
-                    return NotFound();
-                }
+                    SqlCommand cmd = null;
 
-                // Insert da subscription
-                cmd = new SqlCommand("INSERT INTO Subscriptions VALUES (@name, @container_id, @Created_at)", con);
-                cmd.Parameters.AddWithValue("@name", request.ResourceName);
-                cmd.Parameters.AddWithValue("@container_id", container.Id);
-                cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
-
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Created($"api/somiod/{appName}/{containerName}/subscription/{request.ResourceName}", "Subscription");
-                }
-                else
-                {
-                    return BadRequest();
-                }
-            }
-        }
-
-        // READ
-        // Ver resource (content-instance) específico de um container de uma aplicação
-        [HttpGet]
-        [Route("{appName}/{containerName}/{contentInstanceName}")]
-        public IHttpActionResult GetContentInstance(string appName, string containerName, string contentInstanceName)
-        {
-            ContentInstance contentInstance = null;
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                con.Open();
-
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Content_Instances WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", contentInstanceName);
-
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
+                    if(request_type == "content-instance")
                     {
-                        contentInstance = new ContentInstance();
-                        contentInstance.Id = (int)reader["Id"];
-                        contentInstance.Name = (string)reader["Name"];
-                        contentInstance.ContainerId = (int)reader["ContainerId"];
-                        contentInstance.Created_at = (DateTime)reader["Created_at"];
+                        cmd = new SqlCommand("INSERT INTO Content_Instances VALUES (@name,@contenttype,@container_id,@content,@created_at) ; SELECT CAST (SCOPE_IDENTITY() AS INT);", con);
+                        cmd.Parameters.AddWithValue("@name", request.ResourceName);
+                        cmd.Parameters.AddWithValue("@contenttype", request.ContentType);
+                        cmd.Parameters.AddWithValue("@container_id", container.Id);
+                        cmd.Parameters.AddWithValue("@content", request.Content);
+                        cmd.Parameters.AddWithValue("@created_at", DateTime.UtcNow);
+                        int new_id = (int)cmd.ExecuteScalar();
+
+                        ContentInstance content = new ContentInstance();
+                        content.Id = new_id;
+                        content.Name = request.ResourceName;
+                        content.ContentType = request.ContentType;
+                        content.ContainerId = container.Id;
+                        content.Content = request.Content;
+                        content.Created_at = DateTime.UtcNow;
+
+                        String content_name = content.Name;
+                        return Created($"api/somiod/{appName}/{containerName}/{content_name}", content);
                     }
-                }
-
-                if (contentInstance == null)
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    return Ok(contentInstance);
-                }
-            }
-        }
-
-        // READ
-        // Ver um resource (subscription)  de um container de uma aplicação
-        [HttpGet]
-        [Route("{appName}/{containerName}/subscription/{subscriptionName}")]
-        public IHttpActionResult GetSubscription(string appName, string containerName, string subscriptionName)
-        {
-            Subscription subscription = null;
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                con.Open();
-
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Subscriptions WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", subscriptionName);
-
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
+                    else
                     {
-                        subscription = new Subscription();
-                        subscription.Id = (int)reader["Id"];
-                        subscription.Name = (string)reader["Name"];
-                        subscription.ContainerId = (int)reader["ContainerId"];
-                        subscription.Created_at = (DateTime)reader["Created_at"];
-                    }
-                }
+                        cmd = new SqlCommand("INSERT INTO Subscriptions VALUES (@name,@container_id,@evt,@endpoint,@created_at) ; SELECT CAST (SCOPE_IDENTITY() AS INT);", con);
+                        cmd.Parameters.AddWithValue("@name", request.ResourceName);
+                        cmd.Parameters.AddWithValue("@container_id", container.Id);
+                        cmd.Parameters.AddWithValue("@evt", request.Evt);
+                        cmd.Parameters.AddWithValue("@endpoint", request.Endpoint);
+                        cmd.Parameters.AddWithValue("@created_at", DateTime.UtcNow);
+                        int new_id = (int)cmd.ExecuteScalar();
 
-                if (subscription == null)
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    return Ok(subscription);
+                        Subscription subscription= new Subscription();
+                        subscription.Id = new_id;
+                        subscription.Name = request.ResourceName;
+                        subscription.Evt = (int)request.Evt;
+                        subscription.ContainerId = container.Id;
+                        subscription.Endpoint = request.Endpoint;
+                        subscription.Created_at = DateTime.UtcNow;
+
+                        String sub_name = subscription.Name;
+                        return Created($"api/somiod/{appName}/{containerName}/{sub_name}", subscription);
+                    }                       
                 }
             }
-        }
-
-        // DELETE
-        // Eliminar (content-instance) de um container que pertencente a uma aplicação específica
-        [HttpDelete]
-        [Route("{appName}/{containerName}/{contentInstanceName}")]
-        public IHttpActionResult DeleteContentInstance(string appName, string containerName, string contentInstanceName)
-        {
-            using (SqlConnection con = new SqlConnection(Connectstring))
+            catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
             {
-                con.Open();
-
-                SqlCommand cmd = new SqlCommand("DELETE FROM ContentInstances WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", contentInstanceName);
-
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Ok();
-                }
-                else
-                {
-                    return NotFound();
-                }
+                return Conflict();
             }
+           
         }
 
-        // DELETE
-        // Eliminar (subscription) de um container que pertencente a uma aplicação específica
-        [HttpDelete]
-        [Route("{appName}/{containerName}/subscription/{subscriptionName}")]
-        public IHttpActionResult DeleteSubscription(string appName, string containerName, string subscriptionName)
-        {
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                con.Open();
-
-                SqlCommand cmd = new SqlCommand("DELETE FROM Subscriptions WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", subscriptionName);
-
-                int n_rows = cmd.ExecuteNonQuery();
-                if (n_rows > 0)
-                {
-                    return Ok();
-                }
-                else
-                {
-                    return NotFound();
-                }
-            }
-        }
     }
 }
