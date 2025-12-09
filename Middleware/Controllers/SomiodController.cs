@@ -170,54 +170,6 @@ namespace Middleware.Controllers
             }
         }
 
-        //if (string.IsNullOrWhiteSpace(request.ResourceName))
-        //    return BadRequest("Resource name is required.");
-
-        //if (applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
-        //    return Conflict();
-
-        //var app = new Application
-        //{
-        //    Id = applications.Any() ? applications.Max(a => a.Id) + 1 : 1,
-        //    Name = request.ResourceName,
-        //    Created_at = DateTime.UtcNow
-        //};
-
-        //applications.Add(app);
-        //return Created($"api/somiod/{app.Name}", app);
-
-        [HttpGet]
-        [Route("test/test/test")]
-        public IHttpActionResult Gettestapp()
-        {
-            Application app = null;
-
-
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
-                cmd.Connection.Open();
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        app = new Application();
-                        app.Id = (int)reader["Id"];
-                        app.Name = (string)reader["Name"];
-                    }
-                }
-            }
-            if (app == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                return Ok(app);
-            }
-        }
-
         //GET APPLICATION OR DISCOVER RELATED TO APPLICATIONS
 
         [HttpGet]
@@ -326,172 +278,6 @@ namespace Middleware.Controllers
             {
                 return InternalServerError(ex);
             }
-        }
-
-        /*
-
-        [HttpGet]
-        [Route("{appName}")]
-        public IHttpActionResult GetApplicationOrDiscoverRelatedTo(string appName)
-        {
-            IEnumerable<string> headerValues;
-
-            // Load application from DB
-            Application app = null;
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name", con);
-                cmd.Parameters.AddWithValue("@name", appName);
-                con.Open();
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        app = new Application
-                        {
-                            Id = (int)reader["Id"],
-                            Name = (string)reader["Name"]
-                            // optionally set Created_at if needed:
-                            // Created_at = (DateTime)reader["Created_at"]
-                        };
-                    }
-                }
-            }
-
-            if (app == null)
-                return NotFound();
-
-            // If discovery header present, return paths of requested type
-            if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
-            {
-                string discoveryType = headerValues.FirstOrDefault();
-                var paths = new List<string>();
-
-                using (SqlConnection con = new SqlConnection(Connectstring))
-                {
-                    con.Open();
-
-                    if (discoveryType == "container")
-                    {
-                        SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers WHERE AplicationId = @appId", con);
-                        cmd.Parameters.AddWithValue("@appId", app.Id);
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                paths.Add($"/api/somiod/{appName}/{(string)reader["Name"]}");
-                            }
-                        }
-                    }
-                    else if (discoveryType == "content-instance")
-                    {
-                        SqlCommand cmd = new SqlCommand(
-                            "SELECT c.Name AS ContainerName, ci.Name AS ContentName " +
-                            "FROM Containers c JOIN ContentInstances ci ON c.Id = ci.ContainerId " +
-                            "WHERE c.AplicationId = @appId", con);
-                        cmd.Parameters.AddWithValue("@appId", app.Id);
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                paths.Add($"/api/somiod/{appName}/{(string)reader["ContainerName"]}/{(string)reader["ContentName"]}");
-                            }
-                        }
-                    }
-                    else if (discoveryType == "subscription")
-                    {
-                        SqlCommand cmd = new SqlCommand(
-                            "SELECT c.Name AS ContainerName, s.Name AS SubscriptionName " +
-                            "FROM Containers c JOIN Subscriptions s ON c.Id = s.ContainerId " +
-                            "WHERE c.AplicationId = @appId", con);
-                        cmd.Parameters.AddWithValue("@appId", app.Id);
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                paths.Add($"/api/somiod/{appName}/{(string)reader["ContainerName"]}/{(string)reader["SubscriptionName"]}");
-                            }
-                        }
-                    }
-                }
-
-                return Ok(paths);
-            }
-            else
-            {
-                // Regular GET application
-                return Ok(app);
-            }
-
-            /*
-            CODIGO ANTIGO QUE NÃO DAVA BUILD!!
-
-            NÃO APAGUEI PORQUE PODE ESTAR BEM MAS COM UM ERROZITO
-
-            O CODIGO ACIMA É UM REPLACE TEMPORARIO DO COPILOT
-
-            SE ESTIVER TUDO BEM PODEM APAGAR ESTE CODIGO TODO COMENTADO
-
-            OU CONCERTA LO E SUBSTITUIR PELO CODIGO DO COPILOT
-            
-            var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
-            if (app == null)
-                return NotFound();
-
-            // Check if header exists
-            if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
-            {
-                // Header exists - get the value
-                string discoveryType = headerValues.FirstOrDefault();
-                List<string> paths = new List<string>();
-
-                if (discoveryType == "container")
-                {
-                    paths = containers
-                       .Where(c => c.AplicationId == app.Id)
-                       .Select(c => $"/api/somiod/{appName}/{c.Name}")
-                   .ToList();
-                }
-
-                if (discoveryType == "content-instance")
-                {
-                    // find containers of the application
-                    var appContainers = containers
-                        .Where(c => c.AplicationId == app.Id)
-                        .ToList();
-
-                    // find content instances inside those containers
-                    paths = appContainers
-                        .SelectMany(container => contentInstances
-                            .Where(ci => ci.ContainerId == container.Id)
-                            .Select(ci => $"/api/somiod/{appName}/{container.Name}/{ci.Name}")
-                        )
-                        .ToList();
-                }
-
-                if (discoveryType == "subscription")
-                {
-                    // find containers of the application
-                    var appContainers = containers
-                        .Where(c => c.AplicationId == app.Id)
-                        .ToList();
-
-                    // find content instances inside those containers
-                    paths = appContainers
-                        .SelectMany(container => subscriptions
-                            .Where(s => s.ContainerId == container.Id)
-                            .Select(s => $"/api/somiod/{appName}/{container.Name}/{s.Name}")
-                        )
-                        .ToList();
-                }
-
-                return Ok(paths);
-            }
-            else
-            {
-                // Header doesn't exist - regular GET - GET APPLICATION
-                return Ok(app);
-            }*/
         }
 
         [HttpPut]
@@ -1113,7 +899,7 @@ namespace Middleware.Controllers
             {
                 con.Open();
 
-                SqlCommand cmd = new SqlCommand("SELECT * FROM ContentInstances WHERE Name = @name", con);
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Content_Instances WHERE Name = @name", con);
                 cmd.Parameters.AddWithValue("@name", contentInstanceName);
 
                 using (SqlDataReader reader = cmd.ExecuteReader())
@@ -1138,7 +924,6 @@ namespace Middleware.Controllers
                 }
             }
         }
-
 
         // READ
         // Ver um resource (subscription)  de um container de uma aplicação
