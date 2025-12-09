@@ -139,6 +139,104 @@ namespace Middleware.Controllers
         {
             IEnumerable<string> headerValues;
 
+            // Load application from DB
+            Application app = null;
+            using (SqlConnection con = new SqlConnection(Connectstring))
+            {
+                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @name", con);
+                cmd.Parameters.AddWithValue("@name", appName);
+                con.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        app = new Application
+                        {
+                            Id = (int)reader["Id"],
+                            Name = (string)reader["Name"]
+                            // optionally set Created_at if needed:
+                            // Created_at = (DateTime)reader["Created_at"]
+                        };
+                    }
+                }
+            }
+
+            if (app == null)
+                return NotFound();
+
+            // If discovery header present, return paths of requested type
+            if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
+            {
+                string discoveryType = headerValues.FirstOrDefault();
+                var paths = new List<string>();
+
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+
+                    if (discoveryType == "container")
+                    {
+                        SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers WHERE AplicationId = @appId", con);
+                        cmd.Parameters.AddWithValue("@appId", app.Id);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                paths.Add($"/api/somiod/{appName}/{(string)reader["Name"]}");
+                            }
+                        }
+                    }
+                    else if (discoveryType == "content-instance")
+                    {
+                        SqlCommand cmd = new SqlCommand(
+                            "SELECT c.Name AS ContainerName, ci.Name AS ContentName " +
+                            "FROM Containers c JOIN ContentInstances ci ON c.Id = ci.ContainerId " +
+                            "WHERE c.AplicationId = @appId", con);
+                        cmd.Parameters.AddWithValue("@appId", app.Id);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                paths.Add($"/api/somiod/{appName}/{(string)reader["ContainerName"]}/{(string)reader["ContentName"]}");
+                            }
+                        }
+                    }
+                    else if (discoveryType == "subscription")
+                    {
+                        SqlCommand cmd = new SqlCommand(
+                            "SELECT c.Name AS ContainerName, s.Name AS SubscriptionName " +
+                            "FROM Containers c JOIN Subscriptions s ON c.Id = s.ContainerId " +
+                            "WHERE c.AplicationId = @appId", con);
+                        cmd.Parameters.AddWithValue("@appId", app.Id);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                paths.Add($"/api/somiod/{appName}/{(string)reader["ContainerName"]}/{(string)reader["SubscriptionName"]}");
+                            }
+                        }
+                    }
+                }
+
+                return Ok(paths);
+            }
+            else
+            {
+                // Regular GET application
+                return Ok(app);
+            }
+
+            /*
+            CODIGO ANTIGO QUE NÃO DAVA BUILD!!
+
+            NÃO APAGUEI PORQUE PODE ESTAR BEM MAS COM UM ERROZITO
+
+            O CODIGO ACIMA É UM REPLACE TEMPORARIO DO COPILOT
+
+            SE ESTIVER TUDO BEM PODEM APAGAR ESTE CODIGO TODO COMENTADO
+
+            OU CONCERTA LO E SUBSTITUIR PELO CODIGO DO COPILOT
+            
             var app = applications.FirstOrDefault(a => a.Name.Equals(appName, StringComparison.OrdinalIgnoreCase));
             if (app == null)
                 return NotFound();
@@ -196,7 +294,7 @@ namespace Middleware.Controllers
             {
                 // Header doesn't exist - regular GET - GET APPLICATION
                 return Ok(app);
-            }
+            }*/
         }
 
         [HttpPut]
