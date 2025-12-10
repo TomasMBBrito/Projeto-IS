@@ -94,7 +94,7 @@ namespace Middleware.Controllers
                                 string appName = ciReader.GetString(2);
                                 string containerName = ciReader.GetString(0);
                                 string subsName = ciReader.GetString(1);
-                                paths.Add($"/api/somiod/{appName}/{containerName}/{subsName}");
+                                paths.Add($"/api/somiod/{appName}/{containerName}/subs/{subsName}");
                             }
                             ciReader.Close();
                         }
@@ -157,7 +157,7 @@ namespace Middleware.Controllers
 
                     var app = new Application
                     {
-                        Id = newId,
+                        //Id = newId,
                         Name = request.ResourceName,
                         Created_at = DateTime.UtcNow
                     };
@@ -172,53 +172,37 @@ namespace Middleware.Controllers
             }
         }
 
-        //if (string.IsNullOrWhiteSpace(request.ResourceName))
-        //    return BadRequest("Resource name is required.");
-
-        //if (applications.Any(a => a.Name.Equals(request.ResourceName, StringComparison.OrdinalIgnoreCase)))
-        //    return Conflict();
-
-        //var app = new Application
+        //[HttpGet]
+        //[Route("test/test/test")]
+        //public IHttpActionResult Gettestapp()
         //{
-        //    Id = applications.Any() ? applications.Max(a => a.Id) + 1 : 1,
-        //    Name = request.ResourceName,
-        //    Created_at = DateTime.UtcNow
-        //};
-
-        //applications.Add(app);
-        //return Created($"api/somiod/{app.Name}", app);
-
-        [HttpGet]
-        [Route("test/test/test")]
-        public IHttpActionResult Gettestapp()
-        {
-            Application app = null;
+        //    Application app = null;
 
 
-            using (SqlConnection con = new SqlConnection(Connectstring))
-            {
+        //    using (SqlConnection con = new SqlConnection(Connectstring))
+        //    {
 
-                SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
-                cmd.Connection.Open();
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        app = new Application();
-                        app.Id = (int)reader["Id"];
-                        app.Name = (string)reader["Name"];
-                    }
-                }
-            }
-            if (app == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                return Ok(app);
-            }
-        }
+        //        SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
+        //        cmd.Connection.Open();
+        //        using (SqlDataReader reader = cmd.ExecuteReader())
+        //        {
+        //            if (reader.Read())
+        //            {
+        //                app = new Application();
+        //                app.Id = (int)reader["Id"];
+        //                app.Name = (string)reader["Name"];
+        //            }
+        //        }
+        //    }
+        //    if (app == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    else
+        //    {
+        //        return Ok(app);
+        //    }
+        //}
 
         //GET APPLICATION OR DISCOVER RELATED TO APPLICATIONS
 
@@ -306,7 +290,7 @@ namespace Middleware.Controllers
                             {
                                 string containerName = subReader.GetString(0);
                                 string subName = subReader.GetString(1);
-                                paths.Add($"/api/somiod/{appName}/{containerName}/{subName}");
+                                paths.Add($"/api/somiod/{appName}/{containerName}/subs/{subName}");
                             }
                             subReader.Close();
                         }
@@ -621,8 +605,9 @@ namespace Middleware.Controllers
                                 SELECT c.Name, ci.Name 
                                 FROM Content_Instances ci
                                 INNER JOIN Containers c ON ci.ContainerId = c.Id
-                                WHERE c.ApplicationId = @AppId", con);
+                                WHERE c.ApplicationId = @AppId AND ci.ContainerId = @ContainerID", con);
                             ciCmd.Parameters.AddWithValue("@AppId", app.Id);
+                            ciCmd.Parameters.AddWithValue("@ContainerID", container.Id);
 
                             SqlDataReader ciReader = ciCmd.ExecuteReader();
                             while (ciReader.Read())
@@ -639,15 +624,17 @@ namespace Middleware.Controllers
                                 SELECT c.Name, s.Name 
                                 FROM Subscriptions s
                                 INNER JOIN Containers c ON s.ContainerId = c.Id
-                                WHERE c.ApplicationId = @AppId", con);
+                                WHERE c.ApplicationId = @AppId AND ci.ContainerId = @ContainerID", con);
                             subCmd.Parameters.AddWithValue("@AppId", app.Id);
+                            subCmd.Parameters.AddWithValue("@ContainerID", container.Id);
+
 
                             SqlDataReader subReader = subCmd.ExecuteReader();
                             while (subReader.Read())
                             {
                                 //containerName = subReader.GetString(0);
                                 string subName = subReader.GetString(1);
-                                paths.Add($"/api/somiod/{appName}/{containerName}/{subName}");
+                                paths.Add($"/api/somiod/{appName}/{containerName}/subs/{subName}");
                             }
                             subReader.Close();
                         }
@@ -1034,7 +1021,7 @@ namespace Middleware.Controllers
 
                     SqlCommand checkCmd = new SqlCommand(@"
                 SELECT ci.Id
-                FROM Content_Instance ci 
+                FROM Content_Instances ci 
                 INNER JOIN Containers c ON ci.ContainerId = c.Id 
                 INNER JOIN Applications a ON c.ApplicationId = a.Id 
                 WHERE c.Name = @containerName
@@ -1056,7 +1043,7 @@ namespace Middleware.Controllers
                     // ----- DELETE THE RECORD -----
 
                     SqlCommand deleteCmd = new SqlCommand(
-                        "DELETE FROM Content_Instance WHERE Id = @id", con);
+                        "DELETE FROM Content_Instances WHERE Id = @id", con);
 
                     deleteCmd.Parameters.AddWithValue("@id", contentInstanceId);
                     int rowsAffected = deleteCmd.ExecuteNonQuery();
