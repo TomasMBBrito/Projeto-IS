@@ -34,7 +34,7 @@ namespace Middleware.Controllers
 
                     // Check if somiod-discover header exists
                     IEnumerable<string> headerValues;
-                    if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
+                    if (Request.Headers.TryGetValues("somiod-discovery", out headerValues))
                     {
                         string discoveryType = headerValues.FirstOrDefault();
                         List<string> paths = new List<string>();
@@ -239,7 +239,7 @@ namespace Middleware.Controllers
 
                     // Check if somiod-discover header exists
                     IEnumerable<string> headerValues;
-                    if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
+                    if (Request.Headers.TryGetValues("somiod-discovery", out headerValues))
                     {
                         string discoveryType = headerValues.FirstOrDefault();
                         List<string> paths = new List<string>();
@@ -468,9 +468,9 @@ namespace Middleware.Controllers
                     int new_id = (int)cmd.ExecuteScalar();
                     Container container = new Container
                     {
-                        Id = new_id,
+                        //Id = new_id,
                         Name = request.ResourceName,
-                        AplicationId = app.Id,
+                        //AplicationId = app.Id,
                         Created_at = DateTime.UtcNow,
                     };
                     String container_name = container.Name;
@@ -594,7 +594,7 @@ namespace Middleware.Controllers
 
                     // Check if somiod-discover header exists
                     IEnumerable<string> headerValues;
-                    if (Request.Headers.TryGetValues("somiod-discover", out headerValues))
+                    if (Request.Headers.TryGetValues("somiod-discovery", out headerValues))
                     {
                         string discoveryType = headerValues.FirstOrDefault();
                         List<string> paths = new List<string>();
@@ -624,7 +624,7 @@ namespace Middleware.Controllers
                                 SELECT c.Name, s.Name 
                                 FROM Subscriptions s
                                 INNER JOIN Containers c ON s.ContainerId = c.Id
-                                WHERE c.ApplicationId = @AppId AND ci.ContainerId = @ContainerID", con);
+                                WHERE c.ApplicationId = @AppId AND s.ContainerId = @ContainerID", con);
                             subCmd.Parameters.AddWithValue("@AppId", app.Id);
                             subCmd.Parameters.AddWithValue("@ContainerID", container.Id);
 
@@ -791,9 +791,9 @@ namespace Middleware.Controllers
                 }
             }else if (request_type == "subscription")
             {
-                if (request.Evt == null)
+                if (request.Evt == null || (request.Evt != 1 && request.Evt != 2))
                 {
-                    return BadRequest("Evt is required");
+                    return BadRequest("Evt is required or must be 1 (creation) or 2 (deletion)");
                 }
 
                 if (request.Endpoint == null)
@@ -848,10 +848,10 @@ namespace Middleware.Controllers
                         int new_id = (int)cmd.ExecuteScalar();
 
                         ContentInstance content = new ContentInstance();
-                        content.Id = new_id;
+                        //content.Id = new_id;
                         content.Name = request.ResourceName;
                         content.ContentType = request.ContentType;
-                        content.ContainerId = container.Id;
+                        //content.ContainerId = container.Id;
                         content.Content = request.Content;
                         content.Created_at = DateTime.UtcNow;
 
@@ -869,10 +869,10 @@ namespace Middleware.Controllers
                         int new_id = (int)cmd.ExecuteScalar();
 
                         Subscription subscription= new Subscription();
-                        subscription.Id = new_id;
+                        //subscription.Id = new_id;
                         subscription.Name = request.ResourceName;
                         subscription.Evt = (int)request.Evt;
-                        subscription.ContainerId = container.Id;
+                        //subscription.ContainerId = container.Id;
                         subscription.Endpoint = request.Endpoint;
                         subscription.Created_at = DateTime.UtcNow;
 
@@ -927,10 +927,10 @@ namespace Middleware.Controllers
 
                     var contentInstance = new ContentInstance
                     {
-                        Id = (int)ciReader["Id"],
+                        //Id = (int)ciReader["Id"],
                         Name = (string)ciReader["Name"],
                         ContentType = (string)ciReader["ContentType"],
-                        ContainerId = (int)ciReader["ContainerId"],
+                        //ContainerId = (int)ciReader["ContainerId"],
                         Content = (string)ciReader["Content"],
                         Created_at = (DateTime)ciReader["Created_at"]
                     };
@@ -983,11 +983,11 @@ namespace Middleware.Controllers
 
                     var subscription = new Subscription
                     {
-                        Id = (int)reader["Id"],
+                        //Id = (int)reader["Id"],
                         Name = (string)reader["Name"],
-                        ContainerId = (int)reader["ContainerId"],
+                        //ContainerId = (int)reader["ContainerId"],
                         Evt = (int)reader["Evt"],
-                        //Endpoint = (string)reader["Endpoint"],
+                        Endpoint = (string)reader["Endpoint"],
                         Created_at = (DateTime)reader["Created_at"]
                     };
 
