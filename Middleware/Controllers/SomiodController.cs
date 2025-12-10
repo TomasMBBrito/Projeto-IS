@@ -901,5 +901,241 @@ namespace Middleware.Controllers
            
         }
 
+        [HttpGet]
+        [Route("{appName}/{containerName}/{ciName}")]
+        public IHttpActionResult GetContentInstance(string appName, string containerName, string ciName)
+        {
+            if (string.IsNullOrEmpty(appName))
+                return BadRequest("Nome de aplicação inválida");
+
+            if (string.IsNullOrEmpty(containerName))
+                return BadRequest("Nome de container inválido");
+
+            if (string.IsNullOrEmpty(ciName))
+                return BadRequest("Nome de content instance inválido");
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+
+                    SqlCommand cmd = new SqlCommand(@"
+                        SELECT * 
+                        FROM Content_Instances ci 
+                        INNER JOIN Containers c ON ci.containerId = c.id 
+                        INNER JOIN Applications a ON c.ApplicationId = a.id 
+                        WHERE c.Name = @name 
+                          AND a.name = @appname 
+                          AND ci.name = @CiName", con);
+
+                    cmd.Parameters.AddWithValue("@name", containerName);
+                    cmd.Parameters.AddWithValue("@appname", appName);
+                    cmd.Parameters.AddWithValue("@CiName", ciName);
+
+                    SqlDataReader ciReader = cmd.ExecuteReader();
+
+                    if (!ciReader.Read())
+                        return NotFound();
+
+                    var contentInstance = new ContentInstance
+                    {
+                        Id = (int)ciReader["Id"],
+                        Name = (string)ciReader["Name"],
+                        ContentType = (string)ciReader["ContentType"],
+                        ContainerId = (int)ciReader["ContainerId"],
+                        Content = (string)ciReader["Content"],
+                        Created_at = (DateTime)ciReader["Created_at"]
+                    };
+
+                    return Ok(contentInstance);
+                }
+            }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+        [HttpGet]
+        [Route("{appName}/{containerName}/subs/{subName}")]
+        public IHttpActionResult GetSubscription(string appName, string containerName, string subName)
+        {
+            if (string.IsNullOrEmpty(appName))
+                return BadRequest("Nome de aplicação inválida");
+
+            if (string.IsNullOrEmpty(containerName))
+                return BadRequest("Nome de container inválido");
+
+            if (string.IsNullOrEmpty(subName))
+                return BadRequest("Nome de subscription inválido");
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+
+                    SqlCommand cmd = new SqlCommand(@"
+                SELECT *
+                FROM Subscriptions s
+                INNER JOIN Containers c ON s.ContainerId = c.Id
+                INNER JOIN Applications a ON c.ApplicationId = a.Id
+                WHERE c.Name = @containerName
+                  AND a.Name = @appName
+                  AND s.Name = @subName", con);
+
+                    cmd.Parameters.AddWithValue("@containerName", containerName);
+                    cmd.Parameters.AddWithValue("@appName", appName);
+                    cmd.Parameters.AddWithValue("@subName", subName);
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    if (!reader.Read())
+                        return NotFound();
+
+                    var subscription = new Subscription
+                    {
+                        Id = (int)reader["Id"],
+                        Name = (string)reader["Name"],
+                        ContainerId = (int)reader["ContainerId"],
+                        Evt = (int)reader["Evt"],
+                        //Endpoint = (string)reader["Endpoint"],
+                        Created_at = (DateTime)reader["Created_at"]
+                    };
+
+                    return Ok(subscription);
+                }
+            }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+        [HttpDelete]
+        [Route("{appName}/{containerName}/{ciName}")]
+        public IHttpActionResult DeleteContentInstance(string appName, string containerName, string ciName)
+        {
+            if (string.IsNullOrEmpty(appName))
+                return BadRequest("Nome de aplicação inválida");
+
+            if (string.IsNullOrEmpty(containerName))
+                return BadRequest("Nome de container inválido");
+
+            if (string.IsNullOrEmpty(ciName))
+                return BadRequest("Nome de content instance inválido");
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+
+                    SqlCommand checkCmd = new SqlCommand(@"
+                SELECT ci.Id
+                FROM Content_Instance ci 
+                INNER JOIN Containers c ON ci.ContainerId = c.Id 
+                INNER JOIN Applications a ON c.ApplicationId = a.Id 
+                WHERE c.Name = @containerName
+                  AND a.Name = @appName
+                  AND ci.Name = @ciName", con);
+
+                    checkCmd.Parameters.AddWithValue("@containerName", containerName);
+                    checkCmd.Parameters.AddWithValue("@appName", appName);
+                    checkCmd.Parameters.AddWithValue("@ciName", ciName);
+
+                    SqlDataReader reader = checkCmd.ExecuteReader();
+
+                    if (!reader.Read())
+                        return NotFound();
+
+                    int contentInstanceId = (int)reader["Id"];
+                    reader.Close();
+
+                    // ----- DELETE THE RECORD -----
+
+                    SqlCommand deleteCmd = new SqlCommand(
+                        "DELETE FROM Content_Instance WHERE Id = @id", con);
+
+                    deleteCmd.Parameters.AddWithValue("@id", contentInstanceId);
+                    int rowsAffected = deleteCmd.ExecuteNonQuery();
+
+                    if (rowsAffected == 0)
+                        return InternalServerError(new Exception("Erro ao apagar content instance."));
+
+                    return Ok();
+                }
+            }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+        [HttpDelete]
+        [Route("{appName}/{containerName}/subs/{subName}")]
+        public IHttpActionResult DeleteSubscription(string appName, string containerName, string subName)
+        {
+            if (string.IsNullOrEmpty(appName))
+                return BadRequest("Nome de aplicação inválida");
+
+            if (string.IsNullOrEmpty(containerName))
+                return BadRequest("Nome de container inválido");
+
+            if (string.IsNullOrEmpty(subName))
+                return BadRequest("Nome de subscrição inválido");
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(Connectstring))
+                {
+                    con.Open();
+
+                    // -------- VALIDATE PATH --------
+
+                    SqlCommand checkCmd = new SqlCommand(@"
+                        SELECT s.Id
+                        FROM Subscriptions s
+                        INNER JOIN Containers c ON s.ContainerId = c.Id
+                        INNER JOIN Applications a ON c.ApplicationId = a.Id
+                        WHERE c.Name = @containerName
+                          AND a.Name = @appName
+                          AND s.Name = @subName", con);
+
+                    checkCmd.Parameters.AddWithValue("@containerName", containerName);
+                    checkCmd.Parameters.AddWithValue("@appName", appName);
+                    checkCmd.Parameters.AddWithValue("@subName", subName);
+
+                    SqlDataReader reader = checkCmd.ExecuteReader();
+
+                    if (!reader.Read())
+                        return NotFound();
+
+                    int subscriptionId = (int)reader["Id"];
+                    reader.Close();
+
+                    // -------- DELETE SUBSCRIPTION --------
+
+                    SqlCommand deleteCmd = new SqlCommand(
+                        "DELETE FROM Subscriptions WHERE Id = @id", con);
+
+                    deleteCmd.Parameters.AddWithValue("@id", subscriptionId);
+
+                    int rowsAffected = deleteCmd.ExecuteNonQuery();
+
+                    if (rowsAffected == 0)
+                        return InternalServerError(new Exception("Erro ao apagar a subscrição."));
+
+                    return Ok();
+                }
+            }
+            catch (SqlException ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+
     }
 }
