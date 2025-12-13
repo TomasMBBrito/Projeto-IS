@@ -148,21 +148,20 @@ namespace Middleware.Controllers
             {
                 using (SqlConnection con = new SqlConnection(Connectstring))
                 {
+                    DateTime createdAt = DateTime.UtcNow;
                     con.Open();
                     SqlCommand cmd = new SqlCommand("INSERT INTO Applications VALUES (@Name, @Created_at); SELECT CAST(SCOPE_IDENTITY() AS INT);", con);
                     cmd.Parameters.AddWithValue("@Name", request.ResourceName);
-                    cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
+                    cmd.Parameters.AddWithValue("@Created_at", createdAt);
+                    cmd.ExecuteNonQuery();
 
-                    int newId = (int)cmd.ExecuteScalar();
-
-                    var app = new Application
+                    var app = new ApplicationResponse
                     {
-                        //Id = newId,
-                        Name = request.ResourceName,
-                        Created_at = DateTime.UtcNow
+                        ResourceName = request.ResourceName,
+                        CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
                     };
 
-                    return Created($"api/somiod/{app.Name}", app);
+                    return Created($"api/somiod/{app.ResourceName}", app);
                 }
             }
             catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601) // Violation of unique constraint - Resource-name
@@ -171,38 +170,6 @@ namespace Middleware.Controllers
                 //MELHORAR CATCH
             }
         }
-
-        //[HttpGet]
-        //[Route("test/test/test")]
-        //public IHttpActionResult Gettestapp()
-        //{
-        //    Application app = null;
-
-
-        //    using (SqlConnection con = new SqlConnection(Connectstring))
-        //    {
-
-        //        SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE ID = 2", con);
-        //        cmd.Connection.Open();
-        //        using (SqlDataReader reader = cmd.ExecuteReader())
-        //        {
-        //            if (reader.Read())
-        //            {
-        //                app = new Application();
-        //                app.Id = (int)reader["Id"];
-        //                app.Name = (string)reader["Name"];
-        //            }
-        //        }
-        //    }
-        //    if (app == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    else
-        //    {
-        //        return Ok(app);
-        //    }
-        //}
 
         //GET APPLICATION OR DISCOVER RELATED TO APPLICATIONS
 
@@ -342,7 +309,7 @@ namespace Middleware.Controllers
                         appReader.Close();
                         return NotFound();
                     }
-
+                    DateTime createdAt = (DateTime)appReader["Created_at"];
                     appReader.Close();
 
                     SqlCommand cmd = new SqlCommand("UPDATE Applications SET Name = @Name WHere Name = @appName", con);
@@ -351,8 +318,12 @@ namespace Middleware.Controllers
                     int n_rows = cmd.ExecuteNonQuery();
                     if (n_rows > 0)
                     {
-                        //PUT NEW APP INSIDE
-                        return Ok();
+                        var app = new ApplicationResponse
+                        {
+                            ResourceName = request.ResourceName,
+                            CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
+                        };
+                        return Ok(app);
                     }
                     else
                     {
@@ -461,20 +432,20 @@ namespace Middleware.Controllers
                         return NotFound();
                     }
 
+                    DateTime createdAt = DateTime.UtcNow;
+
                     cmd = new SqlCommand("INSERT INTO Containers VALUES (@name,@app_id,@Created_at) ; SELECT CAST(SCOPE_IDENTITY() AS INT);", con);
                     cmd.Parameters.AddWithValue("@name", request.ResourceName);
                     cmd.Parameters.AddWithValue("@app_id", app.Id);
-                    cmd.Parameters.AddWithValue("@Created_at", DateTime.UtcNow);
-                    int new_id = (int)cmd.ExecuteScalar();
-                    Container container = new Container
+                    cmd.Parameters.AddWithValue("@Created_at", createdAt);
+                    cmd.ExecuteNonQuery();
+                    var container = new ContainerResponse
                     {
-                        //Id = new_id,
-                        Name = request.ResourceName,
-                        //AplicationId = app.Id,
-                        Created_at = DateTime.UtcNow,
+                        ResourceName = request.ResourceName,
+                        CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
                     };
-                    String container_name = container.Name;
-                    return Created($"api/somiod/{appName}/{container_name}", container);
+
+                    return Created($"api/somiod/{appName}/{container.ResourceName}", container);
                 }
             }
             catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
@@ -688,7 +659,7 @@ namespace Middleware.Controllers
                             Name = (string)reader["Name"]
                         };
                     }
-
+                    DateTime createdAt = (DateTime)reader["Created_at"];
                     reader.Close();
 
                     SqlCommand cmd = new SqlCommand("UPDATE Containers SET Name = @Name WHere Name = @contName AND ApplicationId = @appid", con);
@@ -698,7 +669,12 @@ namespace Middleware.Controllers
                     int n_rows = cmd.ExecuteNonQuery();
                     if (n_rows > 0)
                     {
-                        return Ok();
+                        var container = new ContainerResponse
+                        {
+                            ResourceName = request.ResourceName,
+                            CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
+                        };
+                        return Ok(container);
                     }
                     else
                     {
@@ -837,26 +813,28 @@ namespace Middleware.Controllers
 
                     SqlCommand cmd = null;
 
-                    if(request_type == "content-instance")
+                    DateTime createdAt = DateTime.UtcNow;
+
+                    if (request_type == "content-instance")
                     {
                         cmd = new SqlCommand("INSERT INTO Content_Instances VALUES (@name,@contenttype,@container_id,@content,@created_at) ; SELECT CAST (SCOPE_IDENTITY() AS INT);", con);
                         cmd.Parameters.AddWithValue("@name", request.ResourceName);
                         cmd.Parameters.AddWithValue("@contenttype", request.ContentType);
                         cmd.Parameters.AddWithValue("@container_id", container.Id);
                         cmd.Parameters.AddWithValue("@content", request.Content);
-                        cmd.Parameters.AddWithValue("@created_at", DateTime.UtcNow);
-                        int new_id = (int)cmd.ExecuteScalar();
+                        cmd.Parameters.AddWithValue("@created_at", createdAt);
+                        cmd.ExecuteNonQuery();
 
-                        ContentInstance content = new ContentInstance();
-                        //content.Id = new_id;
-                        content.Name = request.ResourceName;
-                        content.ContentType = request.ContentType;
-                        //content.ContainerId = container.Id;
-                        content.Content = request.Content;
-                        content.Created_at = DateTime.UtcNow;
+                        var content_instance = new ContentInstanceResponse
+                        {
+                            ResourceName = request.ResourceName,
+                            ContentType = request.ContentType,
+                            Content = request.Content,
+                            CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
+                        };
 
-                        String content_name = content.Name;
-                        return Created($"api/somiod/{appName}/{containerName}/{content_name}", content);
+                        String content_name = content_instance.ResourceName;
+                        return Created($"api/somiod/{appName}/{containerName}/{content_name}", content_instance);
                     }
                     else
                     {
@@ -865,19 +843,19 @@ namespace Middleware.Controllers
                         cmd.Parameters.AddWithValue("@container_id", container.Id);
                         cmd.Parameters.AddWithValue("@evt", request.Evt);
                         cmd.Parameters.AddWithValue("@endpoint", request.Endpoint);
-                        cmd.Parameters.AddWithValue("@created_at", DateTime.UtcNow);
+                        cmd.Parameters.AddWithValue("@created_at", createdAt);
                         int new_id = (int)cmd.ExecuteScalar();
 
-                        Subscription subscription= new Subscription();
-                        //subscription.Id = new_id;
-                        subscription.Name = request.ResourceName;
-                        subscription.Evt = (int)request.Evt;
-                        //subscription.ContainerId = container.Id;
-                        subscription.Endpoint = request.Endpoint;
-                        subscription.Created_at = DateTime.UtcNow;
+                        var subscription = new SubscriptionResponse
+                        {
+                            ResourceName = request.ResourceName,
+                            Evt = request.Evt.Value,
+                            Endpoint = request.Endpoint,
+                            CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
+                        };
 
-                        String sub_name = subscription.Name;
-                        return Created($"api/somiod/{appName}/{containerName}/{sub_name}", subscription);
+                        String sub_name = subscription.ResourceName;
+                        return Created($"api/somiod/{appName}/{containerName}/subs/{sub_name}", subscription);
                     }                       
                 }
             }
@@ -925,14 +903,12 @@ namespace Middleware.Controllers
                     if (!ciReader.Read())
                         return NotFound();
 
-                    var contentInstance = new ContentInstance
+                    var contentInstance = new ContentInstanceResponse
                     {
-                        //Id = (int)ciReader["Id"],
-                        Name = (string)ciReader["Name"],
+                        ResourceName = (string)ciReader["Name"],
                         ContentType = (string)ciReader["ContentType"],
-                        //ContainerId = (int)ciReader["ContainerId"],
                         Content = (string)ciReader["Content"],
-                        Created_at = (DateTime)ciReader["Created_at"]
+                        CreationDatetime = ((DateTime)ciReader["Created_at"]).ToString("yyyy-MM-ddTHH:mm:ss")
                     };
 
                     return Ok(contentInstance);
@@ -981,14 +957,12 @@ namespace Middleware.Controllers
                     if (!reader.Read())
                         return NotFound();
 
-                    var subscription = new Subscription
+                    var subscription = new SubscriptionResponse
                     {
-                        //Id = (int)reader["Id"],
-                        Name = (string)reader["Name"],
-                        //ContainerId = (int)reader["ContainerId"],
+                        ResourceName = (string)reader["Name"],
                         Evt = (int)reader["Evt"],
                         Endpoint = (string)reader["Endpoint"],
-                        Created_at = (DateTime)reader["Created_at"]
+                        CreationDatetime = ((DateTime)reader["Created_at"]).ToString("yyyy-MM-ddTHH:mm:ss")
                     };
 
                     return Ok(subscription);
