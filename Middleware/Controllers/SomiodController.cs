@@ -1,12 +1,15 @@
 ﻿using Middleware.DTOs;
 using Middleware.Models;
+using Middleware.Services;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data.SqlClient;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
-using System.Data.SqlClient;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http;
 using Application = Middleware.Models.Application;
 using Container = Middleware.Models.Container;
@@ -17,6 +20,13 @@ namespace Middleware.Controllers
     public class SomiodController : ApiController
     {
         string Connectstring = Properties.Settings.Default.connectstr;
+        private readonly NotificationService _notificationService;
+
+        // Constructor
+        public SomiodController()
+        {
+            _notificationService = new NotificationService(Connectstring);
+        }
 
         // ============================================
         // APPLICATION ENDPOINTS
@@ -143,7 +153,8 @@ namespace Middleware.Controllers
                 return BadRequest("Invalid resource type. Expected 'application'.");
 
             if (string.IsNullOrWhiteSpace(request.ResourceName))
-                return BadRequest("Resource name is required.");
+                //return BadRequest("Resource name is required.");
+                request.ResourceName = $"{request.ResType}-{Guid.NewGuid().ToString().Substring(0, 8)}";
             try
             {
                 using (SqlConnection con = new SqlConnection(Connectstring))
@@ -402,9 +413,14 @@ namespace Middleware.Controllers
                 return BadRequest("Invalid resource type. Must be container");
             }
 
-            if (string.IsNullOrWhiteSpace(request.ResourceName) || string.IsNullOrWhiteSpace(appName))
+            if (string.IsNullOrWhiteSpace(appName))
             {
-                return BadRequest("Resource name or application name is required");
+                return BadRequest("application name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ResourceName))
+            {
+                request.ResourceName = $"{request.ResType}-{Guid.NewGuid().ToString().Substring(0, 8)}";
             }
 
             try
@@ -659,8 +675,27 @@ namespace Middleware.Controllers
                             Name = (string)reader["Name"]
                         };
                     }
-                    DateTime createdAt = (DateTime)reader["Created_at"];
                     reader.Close();
+
+                    // 2️⃣ Segundo: Buscar o Container e o seu Created_at ORIGINAL
+                    SqlCommand containerCmd = new SqlCommand(@"
+                        SELECT Id, Created_at 
+                        FROM Containers 
+                        WHERE Name = @ContainerName AND ApplicationId = @AppId", con);
+
+                    containerCmd.Parameters.AddWithValue("@ContainerName", containerName);
+                    containerCmd.Parameters.AddWithValue("@AppId", app.Id);
+
+                    SqlDataReader containerReader = containerCmd.ExecuteReader();
+
+                    if (!containerReader.Read())
+                    {
+                        containerReader.Close();
+                        return NotFound();
+                    }
+
+                    DateTime createdAt = (DateTime)containerReader["Created_at"];
+                    containerReader.Close();
 
                     SqlCommand cmd = new SqlCommand("UPDATE Containers SET Name = @Name WHere Name = @contName AND ApplicationId = @appid", con);
                     cmd.Parameters.AddWithValue("@Name", request.ResourceName);
@@ -740,7 +775,7 @@ namespace Middleware.Controllers
 
         [HttpPost]
         [Route("{appName}/{containerName}")]
-        public IHttpActionResult CreateContentInstanceOrSubscription(string appName, string containerName, [FromBody] CreateResourceRequest request)
+        public async Task<IHttpActionResult> CreateContentInstanceOrSubscription(string appName, string containerName, [FromBody] CreateResourceRequest request)
         {
             if (request == null)
             {
@@ -778,9 +813,14 @@ namespace Middleware.Controllers
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(request.ResourceName) || string.IsNullOrWhiteSpace(appName) || string.IsNullOrWhiteSpace(containerName))
+            if (string.IsNullOrWhiteSpace(appName) || string.IsNullOrWhiteSpace(containerName))
             {
-                return BadRequest("Resource name or application name or contianer name is required");
+                return BadRequest("Application name or contianer name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ResourceName))
+            {
+                request.ResourceName = $"{request.ResType}-{Guid.NewGuid().ToString().Substring(0, 8)}";
             }
 
             try
@@ -832,6 +872,14 @@ namespace Middleware.Controllers
                             Content = request.Content,
                             CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
                         };
+
+                        string containerPath = $"api/somiod/{appName}/{containerName}";
+                        await _notificationService.TriggerNotifications(
+                            container.Id,
+                            1,
+                            content_instance,
+                            containerPath
+                        );
 
                         String content_name = content_instance.ResourceName;
                         return Created($"api/somiod/{appName}/{containerName}/{content_name}", content_instance);
@@ -976,7 +1024,7 @@ namespace Middleware.Controllers
 
         [HttpDelete]
         [Route("{appName}/{containerName}/{ciName}")]
-        public IHttpActionResult DeleteContentInstance(string appName, string containerName, string ciName)
+        public async Task<IHttpActionResult> DeleteContentInstance(string appName, string containerName, string ciName)
         {
             if (string.IsNullOrEmpty(appName))
                 return BadRequest("Nome de aplicação inválida");
@@ -1012,6 +1060,17 @@ namespace Middleware.Controllers
                         return NotFound();
 
                     int contentInstanceId = (int)reader["Id"];
+                    int containerId = (int)reader["ContainerId"];
+
+                    var deletedContentInstance = new ContentInstanceResponse
+                    {
+                        ResourceName = (string)reader["Name"],
+                        ContentType = (string)reader["ContentType"],
+                        Content = (string)reader["Content"],
+                        CreationDatetime = ((DateTime)reader["Created_at"]).ToString("yyyy-MM-ddTHH:mm:ss")
+                    };
+
+
                     reader.Close();
 
                     // ----- DELETE THE RECORD -----
@@ -1024,6 +1083,15 @@ namespace Middleware.Controllers
 
                     if (rowsAffected == 0)
                         return InternalServerError(new Exception("Erro ao apagar content instance."));
+
+                    
+                    string containerPath = $"api/somiod/{appName}/{containerName}";
+                    await _notificationService.TriggerNotifications(
+                        containerId,
+                        2,
+                        deletedContentInstance,
+                        containerPath
+                    );
 
                     return Ok();
                 }
