@@ -158,7 +158,9 @@ namespace Middleware.Services
 
                 // Conectar ao broker
                 string clientId = Guid.NewGuid().ToString();
-                client.Connect(clientId);
+
+                await Task.Run(() => client.Connect(clientId))
+                          .ConfigureAwait(false);
 
                 if (!client.IsConnected)
                 {
@@ -169,12 +171,13 @@ namespace Middleware.Services
                 string topic = containerPath;
 
                 // Publicar mensagem
-                client.Publish(
-                    topic,
-                    Encoding.UTF8.GetBytes(jsonPayload),
-                    MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE,
-                    false
-                );
+                await Task.Run(() =>
+                    client.Publish(
+                        topic,
+                        Encoding.UTF8.GetBytes(jsonPayload),
+                        MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE,
+                        false))
+                    .ConfigureAwait(false);
 
                 Console.WriteLine($"[SUCCESS] MQTT notification sent to {broker}:{port} on topic {topic}");
             }
@@ -187,10 +190,12 @@ namespace Middleware.Services
             {
                 if (client != null && client.IsConnected)
                 {
-                    client.Disconnect();
+                    await Task.Run(() => client.Disconnect())
+                              .ConfigureAwait(false);
                 }
             }
         }
+
 
         /// <summary>
         /// Verify if endpoint is HTTP
