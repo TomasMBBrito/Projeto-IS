@@ -552,7 +552,7 @@ namespace Middleware.Controllers
                         return NotFound();
                     }
 
-                    var app = new Application
+                    Application app = new Application
                     {
                         Id = (int)appReader["Id"],
                         Name = (string)appReader["Name"],
@@ -572,12 +572,14 @@ namespace Middleware.Controllers
                         return NotFound();
                     }
 
-                    Container container = new Container
+                    DateTime createdAt = (DateTime)contReader["Created_at"];
+
+                    int container_id = (int)contReader["Id"];
+
+                    ContainerResponse container = new ContainerResponse
                     {
-                        Id = (int)contReader["Id"],
-                        Name = (string)contReader["Name"],
-                        AplicationId = (int)contReader["ApplicationId"],
-                        Created_at = (DateTime)contReader["Created_at"]
+                        ResourceName = (string)contReader["Name"],
+                        CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
                     };
 
                     contReader.Close();
@@ -597,7 +599,7 @@ namespace Middleware.Controllers
                                 INNER JOIN Containers c ON ci.ContainerId = c.Id
                                 WHERE c.ApplicationId = @AppId AND ci.ContainerId = @ContainerID", con);
                             ciCmd.Parameters.AddWithValue("@AppId", app.Id);
-                            ciCmd.Parameters.AddWithValue("@ContainerID", container.Id);
+                            ciCmd.Parameters.AddWithValue("@ContainerID", container_id);
 
                             SqlDataReader ciReader = ciCmd.ExecuteReader();
                             while (ciReader.Read())
@@ -616,7 +618,7 @@ namespace Middleware.Controllers
                                 INNER JOIN Containers c ON s.ContainerId = c.Id
                                 WHERE c.ApplicationId = @AppId AND s.ContainerId = @ContainerID", con);
                             subCmd.Parameters.AddWithValue("@AppId", app.Id);
-                            subCmd.Parameters.AddWithValue("@ContainerID", container.Id);
+                            subCmd.Parameters.AddWithValue("@ContainerID", container_id);
 
 
                             SqlDataReader subReader = subCmd.ExecuteReader();
@@ -803,7 +805,23 @@ namespace Middleware.Controllers
                 {
                     return BadRequest("Content-type is required");
                 }
-            }else if (request_type == "subscription")
+
+                var valid_content_types = new[]
+                {
+                    "application/json",
+                    "application/xml",
+                    "application/plaintext"
+                };
+
+                if (!valid_content_types.Contains(request.ContentType.ToLower()))
+                {
+                    return BadRequest("Invalid content-type. Must be application/json, application/xml or application/plaintext");
+                }
+
+
+
+            }
+            else if (request_type == "subscription")
             {
                 if (request.Evt == null || (request.Evt != 1 && request.Evt != 2))
                 {
@@ -1045,7 +1063,7 @@ namespace Middleware.Controllers
                     con.Open();
 
                     SqlCommand checkCmd = new SqlCommand(@"
-                SELECT ci.Id
+                SELECT ci.Id,ci.ContainerId
                 FROM Content_Instances ci 
                 INNER JOIN Containers c ON ci.ContainerId = c.Id 
                 INNER JOIN Applications a ON c.ApplicationId = a.Id 
