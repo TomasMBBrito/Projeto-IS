@@ -206,11 +206,14 @@ namespace Middleware.Controllers
                         return NotFound();
                     }
 
-                    var app = new Application
+                    DateTime createdAt = (DateTime)appReader["Created_at"];
+
+                    int app_id = (int)appReader["Id"];
+
+                    var app = new ApplicationResponse
                     {
-                        Id = (int)appReader["Id"],
-                        Name = (string)appReader["Name"],
-                        Created_at = (DateTime)appReader["Created_at"]
+                        ResourceName = (string)appReader["Name"],
+                        CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
                     };
 
                     appReader.Close();
@@ -226,7 +229,7 @@ namespace Middleware.Controllers
                         {
                             SqlCommand containerCmd = new SqlCommand(
                                 "SELECT Name FROM Containers WHERE ApplicationId = @AppId", con);
-                            containerCmd.Parameters.AddWithValue("@AppId", app.Id);
+                            containerCmd.Parameters.AddWithValue("@AppId", app_id);
 
                             SqlDataReader containerReader = containerCmd.ExecuteReader();
                             while (containerReader.Read())
@@ -243,7 +246,7 @@ namespace Middleware.Controllers
                                 FROM Content_Instances ci
                                 INNER JOIN Containers c ON ci.ContainerId = c.Id
                                 WHERE c.ApplicationId = @AppId", con);
-                            ciCmd.Parameters.AddWithValue("@AppId", app.Id);
+                            ciCmd.Parameters.AddWithValue("@AppId", app_id);
 
                             SqlDataReader ciReader = ciCmd.ExecuteReader();
                             while (ciReader.Read())
@@ -261,7 +264,7 @@ namespace Middleware.Controllers
                                 FROM Subscriptions s
                                 INNER JOIN Containers c ON s.ContainerId = c.Id
                                 WHERE c.ApplicationId = @AppId", con);
-                            subCmd.Parameters.AddWithValue("@AppId", app.Id);
+                            subCmd.Parameters.AddWithValue("@AppId", app_id);
 
                             SqlDataReader subReader = subCmd.ExecuteReader();
                             while (subReader.Read())
