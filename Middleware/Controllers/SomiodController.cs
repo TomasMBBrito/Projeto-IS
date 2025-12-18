@@ -149,7 +149,7 @@ namespace Middleware.Controllers
             if (request == null)
                 return BadRequest("Request body is required.");
 
-            if (request.ResType?.ToLower() != "application")
+            if (!string.Equals(request.ResType, "application", StringComparison.OrdinalIgnoreCase))
                 return BadRequest("Invalid resource type. Expected 'application'.");
 
             if (string.IsNullOrWhiteSpace(request.ResourceName))
@@ -159,8 +159,21 @@ namespace Middleware.Controllers
             {
                 using (SqlConnection con = new SqlConnection(Connectstring))
                 {
-                    DateTime createdAt = DateTime.UtcNow;
                     con.Open();
+                    // Verificar se já existe
+                    SqlCommand checkCmd = new SqlCommand(
+                        "SELECT COUNT(*) FROM Applications WHERE Name = @Name", con);
+                    checkCmd.Parameters.AddWithValue("@Name", request.ResourceName);
+
+                    int count = (int)checkCmd.ExecuteScalar();
+
+                    if (count > 0)
+                    {
+                        // Aplicação já existe
+                        return Conflict();
+                    }
+
+                    DateTime createdAt = DateTime.UtcNow;
                     SqlCommand cmd = new SqlCommand("INSERT INTO Applications VALUES (@Name, @Created_at); SELECT CAST(SCOPE_IDENTITY() AS INT);", con);
                     cmd.Parameters.AddWithValue("@Name", request.ResourceName);
                     cmd.Parameters.AddWithValue("@Created_at", createdAt);
@@ -175,10 +188,9 @@ namespace Middleware.Controllers
                     return Created($"api/somiod/{app.ResourceName}", app);
                 }
             }
-            catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601) // Violation of unique constraint - Resource-name
+            catch (SqlException ex)
             {
-                return Conflict();
-                //MELHORAR CATCH
+                return InternalServerError(ex);
             }
         }
 
@@ -1063,7 +1075,7 @@ namespace Middleware.Controllers
                     con.Open();
 
                     SqlCommand checkCmd = new SqlCommand(@"
-                SELECT ci.Id,ci.ContainerId
+                SELECT ci.Id, ci.ContainerId, ci.Name, ci.ContentType, ci.Content, ci.Created_at
                 FROM Content_Instances ci 
                 INNER JOIN Containers c ON ci.ContainerId = c.Id 
                 INNER JOIN Applications a ON c.ApplicationId = a.Id 
