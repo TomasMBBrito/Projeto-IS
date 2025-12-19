@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Middleware", "Middleware\Mi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aplicação_cliente", "Aplicação_cliente\Aplicação_cliente.csproj", "{C72DA115-C4B1-4AE8-AB38-7A1C92EC251E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gestor_Armazem", "Gestor_Armazem\Gestor_Armazem.csproj", "{C16747BD-C75B-4951-8EBD-DB2FE1ECFAFD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{C72DA115-C4B1-4AE8-AB38-7A1C92EC251E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C72DA115-C4B1-4AE8-AB38-7A1C92EC251E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C72DA115-C4B1-4AE8-AB38-7A1C92EC251E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C16747BD-C75B-4951-8EBD-DB2FE1ECFAFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C16747BD-C75B-4951-8EBD-DB2FE1ECFAFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C16747BD-C75B-4951-8EBD-DB2FE1ECFAFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C16747BD-C75B-4951-8EBD-DB2FE1ECFAFD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
