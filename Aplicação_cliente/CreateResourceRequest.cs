@@ -14,5 +14,12 @@ namespace Aplicação_cliente
 
         [JsonProperty("resource-name")]
         public string ResourceName { get; set; }
+
+        // For subscription
+        [JsonProperty("evt")]
+        public int? Evt { get; set; }
+
+        [JsonProperty("endpoint")]
+        public string Endpoint { get; set; }
     }
 }

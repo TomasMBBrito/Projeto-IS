@@ -34,9 +34,9 @@
             this.label2 = new System.Windows.Forms.Label();
             this.button1 = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
-            this.button3 = new System.Windows.Forms.Button();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
+            this.button4 = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // listBoxApplications
@@ -93,15 +93,6 @@
             this.button2.Text = "Update Order Status";
             this.button2.UseVisualStyleBackColor = true;
             // 
-            // button3
-            // 
-            this.button3.Location = new System.Drawing.Point(415, 649);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(153, 48);
-            this.button3.TabIndex = 6;
-            this.button3.Text = "Delete Order";
-            this.button3.UseVisualStyleBackColor = true;
-            // 
             // textBox1
             // 
             this.textBox1.Location = new System.Drawing.Point(16, 597);
@@ -118,14 +109,23 @@
             this.label3.TabIndex = 8;
             this.label3.Text = "Order Status";
             // 
+            // button4
+            // 
+            this.button4.Location = new System.Drawing.Point(282, 104);
+            this.button4.Name = "button4";
+            this.button4.Size = new System.Drawing.Size(155, 105);
+            this.button4.TabIndex = 9;
+            this.button4.Text = "Descobrir Encomendas";
+            this.button4.UseVisualStyleBackColor = true;
+            // 
             // GestorEncomendaForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 730);
+            this.Controls.Add(this.button4);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.textBox1);
-            this.Controls.Add(this.button3);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.label2);
@@ -147,9 +147,9 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
-        private System.Windows.Forms.Button button3;
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Button button4;
     }
 }
 

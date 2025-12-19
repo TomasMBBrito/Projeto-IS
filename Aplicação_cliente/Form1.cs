@@ -7,6 +7,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -109,7 +110,7 @@ namespace Aplicação_cliente
 
             var encomenda = new
             {
-                name = textBoxProduto.Text,
+                name = "container_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper(),
                 created_at = DateTime.UtcNow.ToString("yyyy-MM-dd")
             };
 
@@ -117,13 +118,13 @@ namespace Aplicação_cliente
 
             var client_rest = new RestClient(baseURI);
             var request = new RestRequest($"api/somiod/{app_name}", Method.Post);
-            var application = new CreateResourceRequest()
+            var container = new CreateResourceRequest()
             {
                 ResType = "container",
-                ResourceName = "container_" + encomenda.name
+                ResourceName = encomenda.name
             };
 
-            string jsonBody = JsonConvert.SerializeObject(application);
+            string jsonBody = JsonConvert.SerializeObject(container);
             request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
             var response = client_rest.Execute(request);
             if (response.StatusCode == HttpStatusCode.Created)
@@ -131,7 +132,7 @@ namespace Aplicação_cliente
                 MessageBox.Show("Order created.");
                 if (response.Content != null)
                 {
-                    MessageBox.Show("Response Content: " + response.Content);
+                    //MessageBox.Show("Response Content: " + response.Content);
                 }
 
             }
@@ -143,6 +144,39 @@ namespace Aplicação_cliente
             else
             {
                 MessageBox.Show("Error creating order: " + response.Content);
+                return;
+            }
+
+
+            var request_subscription = new RestRequest($"api/somiod/{app_name}/{encomenda.name}", Method.Post);
+            var subscription = new CreateResourceRequest()
+            {
+                ResourceName = "sub_" + encomenda.name,
+                ResType = "subscription",
+                Evt = 1,
+                Endpoint = baseURI
+            };
+
+            string jsonSubBody = JsonConvert.SerializeObject(subscription);
+            request_subscription.AddParameter("application/json", jsonSubBody, ParameterType.RequestBody);
+            var resposta_sub = client_rest.Execute(request_subscription);
+            if (resposta_sub.StatusCode == HttpStatusCode.Created)
+            {
+                MessageBox.Show("Notifications about order activated.");
+                if (resposta_sub.Content != null)
+                {
+                    //MessageBox.Show("Response Content: " + resposta_sub.Content);
+                }
+
+            }
+            else if (resposta_sub.StatusCode == HttpStatusCode.Conflict)
+            {
+                MessageBox.Show("Notification about order already made");
+                return;
+            }
+            else
+            {
+                MessageBox.Show("Error on asking to notify: " + resposta_sub.Content);
                 return;
             }
         }
