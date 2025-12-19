@@ -107,7 +107,6 @@ namespace Aplicação_cliente
         {
             listBoxProdutos.Items.Clear();
 
-
             var encomenda = new
             {
                 name = textBoxProduto.Text,
@@ -115,6 +114,37 @@ namespace Aplicação_cliente
             };
 
             listBoxEncomendas.Items.Add(encomenda.name + "... " + " Criada em : " + encomenda.created_at + Environment.NewLine);
+
+            var client_rest = new RestClient(baseURI);
+            var request = new RestRequest($"api/somiod/{app_name}", Method.Post);
+            var application = new CreateResourceRequest()
+            {
+                ResType = "container",
+                ResourceName = "container_" + encomenda.name
+            };
+
+            string jsonBody = JsonConvert.SerializeObject(application);
+            request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
+            var response = client_rest.Execute(request);
+            if (response.StatusCode == HttpStatusCode.Created)
+            {
+                MessageBox.Show("Order created.");
+                if (response.Content != null)
+                {
+                    MessageBox.Show("Response Content: " + response.Content);
+                }
+
+            }
+            else if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                MessageBox.Show("Order already made");
+                return;
+            }
+            else
+            {
+                MessageBox.Show("Error creating order: " + response.Content);
+                return;
+            }
         }
     }
 }

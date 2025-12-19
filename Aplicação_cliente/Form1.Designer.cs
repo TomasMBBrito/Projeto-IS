@@ -36,6 +36,8 @@
             this.product_quantity = new System.Windows.Forms.NumericUpDown();
             this.listBoxEncomendas = new System.Windows.Forms.ListBox();
             this.label2 = new System.Windows.Forms.Label();
+            this.btnSubscribeToOrder = new System.Windows.Forms.Button();
+            this.listBox1 = new System.Windows.Forms.ListBox();
             ((System.ComponentModel.ISupportInitialize)(this.product_quantity)).BeginInit();
             this.SuspendLayout();
             // 
@@ -119,11 +121,31 @@
             this.label2.TabIndex = 7;
             this.label2.Text = "Encomendas";
             // 
+            // btnSubscribeToOrder
+            // 
+            this.btnSubscribeToOrder.Location = new System.Drawing.Point(34, 269);
+            this.btnSubscribeToOrder.Name = "btnSubscribeToOrder";
+            this.btnSubscribeToOrder.Size = new System.Drawing.Size(392, 43);
+            this.btnSubscribeToOrder.TabIndex = 8;
+            this.btnSubscribeToOrder.Text = "Subscrever a uma encomenda";
+            this.btnSubscribeToOrder.UseVisualStyleBackColor = true;
+            // 
+            // listBox1
+            // 
+            this.listBox1.FormattingEnabled = true;
+            this.listBox1.ItemHeight = 16;
+            this.listBox1.Location = new System.Drawing.Point(34, 355);
+            this.listBox1.Name = "listBox1";
+            this.listBox1.Size = new System.Drawing.Size(392, 324);
+            this.listBox1.TabIndex = 9;
+            // 
             // EncomendaForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(800, 707);
+            this.Controls.Add(this.listBox1);
+            this.Controls.Add(this.btnSubscribeToOrder);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.listBoxEncomendas);
             this.Controls.Add(this.product_quantity);
@@ -151,6 +173,8 @@
         private System.Windows.Forms.NumericUpDown product_quantity;
         private System.Windows.Forms.ListBox listBoxEncomendas;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Button btnSubscribeToOrder;
+        private System.Windows.Forms.ListBox listBox1;
     }
 }
 
