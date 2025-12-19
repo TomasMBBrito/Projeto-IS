@@ -134,6 +134,7 @@
             this.Controls.Add(this.listBoxApplications);
             this.Name = "GestorEncomendaForm";
             this.Text = "GestorEncomendasForm";
+            this.Load += new System.EventHandler(this.GestorEncomendaForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
