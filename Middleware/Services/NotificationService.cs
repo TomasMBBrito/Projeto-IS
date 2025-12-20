@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Net.Http;
@@ -28,9 +29,15 @@ namespace Middleware.Services
         /// </summary>
         public async Task TriggerNotifications(int container_id, int event_type, object resource_data, string container_path)
         {
+            System.Diagnostics.Debug.WriteLine("=== TRIGGER NOTIFICATIONS ===");
+            System.Diagnostics.Debug.WriteLine($"ContainerId: {container_id}");
+            System.Diagnostics.Debug.WriteLine($"Event: {event_type}");
+
             try
             {
                 List<Subscription> subscriptions = GetSubscriptionsForEvent(container_id, event_type);
+
+                System.Diagnostics.Debug.WriteLine($"[NOTIFY] Subscriptions found: {subscriptions.Count}");
 
                 if (subscriptions.Count == 0)
                 {
@@ -44,7 +51,6 @@ namespace Middleware.Services
                     eventType = event_type == 1 ? "creation" : "deletion",
                     resource = resource_data,
                     timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
-                    containerPath = container_path
                 };
 
                 string jsonPayload = JsonConvert.SerializeObject(notificationPayload, Formatting.Indented);
@@ -60,6 +66,7 @@ namespace Middleware.Services
                         }
                         else if (IsMqttEndpoint(subscription.Endpoint))
                         {
+                            System.Diagnostics.Debug.WriteLine($"AAAAA");
                             await SendMqttNotification(subscription.Endpoint, container_path, jsonPayload);
                         }
                         else
@@ -80,16 +87,19 @@ namespace Middleware.Services
                 throw;
             }
         }
-        
 
-        private List<Subscription> GetSubscriptionsForEvent(int container_id,int eventype) {
+
+        private List<Subscription> GetSubscriptionsForEvent(int container_id, int eventype)
+        {
             List<Subscription> subscriptions = new List<Subscription>();
 
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
                 con.Open();
 
-                SqlCommand cmd = new SqlCommand(@"Select Id,Name, ContainerId, Evt, Endpoint,Created_at FROM Subscriptions Where ContainerId = @containerId AND (Evt = @eventtype)", con);
+                SqlCommand cmd = new SqlCommand(@"SELECT Id, Name, ContainerId, Evt, Endpoint, Created_at 
+                                         FROM Subscriptions 
+                                         WHERE ContainerId = @containerId AND Evt = @eventtype", con);
                 cmd.Parameters.AddWithValue("@containerId", container_id);
                 cmd.Parameters.AddWithValue("@eventtype", eventype);
 
@@ -99,19 +109,18 @@ namespace Middleware.Services
                     {
                         subscriptions.Add(new Subscription()
                         {
-                            Id = (int)reader["Id"],
-                            Name = (string)reader["Name"],
-                            ContainerId = (int)reader["ContainerId"],
-                            Evt = (int)reader["Evt"],
-                            Endpoint = (string)reader["Endpoint"],
-                            Created_at = (DateTime)reader["Created_at"]
-
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? string.Empty : reader.GetString(reader.GetOrdinal("Name")),
+                            ContainerId = reader.GetInt32(reader.GetOrdinal("ContainerId")),
+                            Evt = reader.GetInt32(reader.GetOrdinal("Evt")),
+                            Endpoint = reader.IsDBNull(reader.GetOrdinal("Endpoint")) ? string.Empty : reader.GetString(reader.GetOrdinal("Endpoint")),
+                            Created_at = reader.GetDateTime(reader.GetOrdinal("Created_at"))
                         });
                     }
                 }
             }
 
-                return subscriptions;
+            return subscriptions;
         }
 
         /// <summary>
@@ -169,6 +178,8 @@ namespace Middleware.Services
 
                 // O canal/topic é o path do container
                 string topic = containerPath;
+                System.Diagnostics.Debug.WriteLine(jsonPayload);
+
 
                 // Publicar mensagem
                 await Task.Run(() =>
@@ -178,6 +189,8 @@ namespace Middleware.Services
                         MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE,
                         false))
                     .ConfigureAwait(false);
+
+                System.Diagnostics.Debug.WriteLine($"BBBBBBBBb");
 
                 Console.WriteLine($"[SUCCESS] MQTT notification sent to {broker}:{port} on topic {topic}");
             }

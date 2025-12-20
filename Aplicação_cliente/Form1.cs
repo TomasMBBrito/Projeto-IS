@@ -23,6 +23,7 @@ namespace Aplicação_cliente
 
         private MqttClient client;
         private List<string> subscribed_topics = new List<string>();
+        private Dictionary<string, string> orderStatuses = new Dictionary<string, string>();
         public EncomendaForm()
         {
             InitializeComponent();
@@ -60,11 +61,78 @@ namespace Aplicação_cliente
         {
             this.Invoke((MethodInvoker) delegate
             {
-                string message = Encoding.UTF8.GetString(e.Message);
-                string topic = e.Topic;
+                System.Diagnostics.Debug.WriteLine($"fsefesfsfe");
+                try
+                {
+                    string message = Encoding.UTF8.GetString(e.Message);
+                    string topic = e.Topic;
 
-                MessageBox.Show($"Notification received!\nTopic:{topic} -> Message:{message}");
+                    // DEBUG: Show the raw message first
+                    MessageBox.Show($"RAW MESSAGE RECEIVED:\n\nTopic: {topic}\n\nMessage:\n{message}");
+
+                    // Parse the XML to extract order name and status
+                    string orderName = ExtractXmlValue(message, "OrderName");
+                    string status = ExtractXmlValue(message, "Status");
+
+                    if (!string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
+                    {
+                        // Update the dictionary
+                        orderStatuses[orderName] = status;
+
+                        // Update the ListBox
+                        UpdateOrderStatusInListBox(orderName, status);
+
+                        MessageBox.Show($"Order Update Received!\n\nOrder: {orderName}\nStatus: {status}");
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error processing notification: {ex.Message}");
+                }
             });
+        }
+
+        private string ExtractXmlValue(string xml, string tagName)
+        {
+            string startTag = $"<{tagName}>";
+            string endTag = $"</{tagName}>";
+
+            int startIndex = xml.IndexOf(startTag);
+            int endIndex = xml.IndexOf(endTag);
+
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                startIndex += startTag.Length;
+                return xml.Substring(startIndex, endIndex - startIndex);
+            }
+
+            return null;
+        }
+
+        // Update the ListBox to show status next to order
+        private void UpdateOrderStatusInListBox(string orderName, string status)
+        {
+            for (int i = 0; i < listBoxEncomendas.Items.Count; i++)
+            {
+                string item = listBoxEncomendas.Items[i].ToString();
+
+                // Check if this item contains the order name
+                if (item.Contains(orderName))
+                {
+                    // Extract the creation date part
+                    int createdIndex = item.IndexOf("Criada em :");
+                    string createdPart = createdIndex >= 0 ? item.Substring(createdIndex) : "";
+
+                    // Rebuild the item with status
+                    string updatedItem = $"{orderName} - Status: {status} | {createdPart}";
+                    listBoxEncomendas.Items[i] = updatedItem;
+                    break;
+                }
+            }
         }
 
         private void EncomendaForm_Load(object sender, EventArgs e)
@@ -111,7 +179,7 @@ namespace Aplicação_cliente
 
         private void btnAddToCart_Click(object sender, EventArgs e)
         {
-            if (textBoxProduto.Text.Length <= 0) 
+                if (textBoxProduto.Text.Length <= 0) 
             {
                 MessageBox.Show("Por favor insira o nome de um produto");
                 return;
@@ -167,7 +235,7 @@ namespace Aplicação_cliente
 
             var encomenda = new
             {
-                name = "container_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper(),
+                name = "encomenda_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper(),
                 created_at = DateTime.UtcNow.ToString("yyyy-MM-dd")
             };
 
@@ -210,7 +278,7 @@ namespace Aplicação_cliente
                 ResourceName = "sub_" + encomenda.name,
                 ResType = "subscription",
                 Evt = 1,
-                Endpoint = "mqtt://localhost:61331"
+                Endpoint = "mqtt://localhost:1883"
             };
 
             string jsonSubBody = JsonConvert.SerializeObject(subscription);
@@ -220,14 +288,14 @@ namespace Aplicação_cliente
             {
                 MessageBox.Show("Notifications about order activated.");
 
-                string[] topic = { $"api/somiod/{app_name}/{encomenda.name}" };
+                string topic =  $"{app_name}/{encomenda.name}";
 
-                byte[] qosLevel = {
-                    MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE
-                };
 
-                client.Subscribe(topic,qosLevel);
-                subscribed_topics.Add(topic[0]);
+
+                client.Subscribe(new string[] { topic },
+                 new byte[] { MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE });
+
+                subscribed_topics.Add(topic);
 
             }
             else if (resposta_sub.StatusCode == HttpStatusCode.Conflict)

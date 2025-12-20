@@ -1118,7 +1118,7 @@ namespace Middleware.Controllers
                         return InternalServerError(new Exception("Erro ao apagar content instance."));
 
                     
-                    string containerPath = $"api/somiod/{appName}/{containerName}";
+                    string containerPath = $"{appName}/{containerName}";
                     await _notificationService.TriggerNotifications(
                         containerId,
                         2,

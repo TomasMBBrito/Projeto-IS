@@ -70,18 +70,9 @@ namespace Gestor_Armazem
             }
         }
 
-        private string ExtractApplicationName(string path)
+        private string ExtractName(string path)
         {
             // Extract application name from path like "/api/somiod/FnacClient_Vecna"
-            if (string.IsNullOrEmpty(path)) return null;
-
-            var parts = path.Split('/');
-            return parts.Length > 0 ? parts[parts.Length - 1] : null;
-        }
-
-        private string ExtractContainerName(string path)
-        {
-            // Extract container name from path like "/api/somiod/FnacClient_Vecna/container_ABC123"
             if (string.IsNullOrEmpty(path)) return null;
 
             var parts = path.Split('/');
@@ -107,7 +98,7 @@ namespace Gestor_Armazem
 
                         // Filter and extract FnacClient_ applications
                         var filteredApps = applications
-                            .Select(path => ExtractApplicationName(path))
+                            .Select(path => ExtractName(path))
                             .Where(name => !string.IsNullOrEmpty(name) && name.StartsWith("FnacClient_"))
                             .ToList();
 
@@ -235,7 +226,7 @@ namespace Gestor_Armazem
 
                     foreach (var containerPath in containers)
                     {
-                        string containerName = ExtractContainerName(containerPath);
+                        string containerName = ExtractName(containerPath);
                         if (!string.IsNullOrEmpty(containerName))
                         {
                             listBoxContainers.Items.Add(containerName);
@@ -284,48 +275,44 @@ namespace Gestor_Armazem
         {
             if (listBoxApplications.SelectedItem == null)
             {
-                MessageBox.Show("Please,select a client first");
+                MessageBox.Show("Please, select a client first");
                 return;
             }
-
             if (listBoxContainers.SelectedItem == null)
             {
                 MessageBox.Show("Please, select an order first");
                 return;
             }
-
             string selectedApp = listBoxApplications.SelectedItem.ToString();
             string selectedOrder = listBoxContainers.SelectedItem.ToString();
-
             try
             {
                 var clientRest = new RestClient(baseURI);
                 var request = new RestRequest($"/{selectedApp}/{selectedOrder}", Method.Post);
 
-                // Criar o content-instance com informação do status
+                // Create XML content with order name
+                string xmlContent = $@"<OrderUpdate>
+                    <OrderName>{selectedOrder}</OrderName>
+                    <Status>{status}</Status>
+                    <Timestamp>{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss}</Timestamp>
+                    </OrderUpdate>";
+
                 var contentInstance = new CreateResourceRequest()
                 {
                     ResType = "content-instance",
                     ResourceName = $"status_{DateTime.Now.Ticks}",
-                    ContentType = "application/json",
-                    Content = JsonConvert.SerializeObject(new
-                    {
-                        status = status,
-                        timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
-                        processedBy = app_name
-                    })
+                    ContentType = "application/xml",  // Changed to XML
+                    Content = xmlContent  // XML string instead of JSON
                 };
 
                 string jsonBody = JsonConvert.SerializeObject(contentInstance);
                 request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
 
                 var response = clientRest.Execute(request);
-
                 if (response.StatusCode == HttpStatusCode.Created)
                 {
                     MessageBox.Show($"Order updated to: {status}\n\nThe client will be notified via MQTT!");
                     labelOrderStatus.Text = "Order Status: " + status;
-
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
