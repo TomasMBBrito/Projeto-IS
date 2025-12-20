@@ -79,6 +79,15 @@ namespace Gestor_Armazem
             return parts.Length > 0 ? parts[parts.Length - 1] : null;
         }
 
+        private string ExtractContainerName(string path)
+        {
+            // Extract container name from path like "/api/somiod/FnacClient_Vecna/container_ABC123"
+            if (string.IsNullOrEmpty(path)) return null;
+
+            var parts = path.Split('/');
+            return parts.Length > 0 ? parts[parts.Length - 1] : null;
+        }
+
         private void SearchApplicationsThreadMethod()
         {
             while (isSearching)
@@ -194,7 +203,61 @@ namespace Gestor_Armazem
 
         private void btnDiscoverOrders_Click(object sender, EventArgs e)
         {
+            // Verificar se há uma aplicação selecionada
+            if (listBoxApplications.SelectedItem == null)
+            {
+                MessageBox.Show("Please select an app first.");
+                return;
+            }
 
+            string selectedApp = listBoxApplications.SelectedItem.ToString();
+
+            try
+            {
+                var clientRest = new RestClient(baseURI);
+                var request = new RestRequest($"/{selectedApp}", Method.Get);
+                request.AddHeader("somiod-discovery", "container");
+                request.RequestFormat = DataFormat.Json;
+
+                var response = clientRest.Execute(request);
+
+                if (response.StatusCode == HttpStatusCode.OK && response.Content != null)
+                {
+                    var containers = JsonConvert.DeserializeObject<List<string>>(response.Content);
+
+                    listBoxContainers.Items.Clear();
+
+                    if (containers == null || containers.Count == 0)
+                    {
+                        MessageBox.Show("Orders not found.");
+                        return;
+                    }
+
+                    foreach (var containerPath in containers)
+                    {
+                        string containerName = ExtractContainerName(containerPath);
+                        if (!string.IsNullOrEmpty(containerName))
+                        {
+                            listBoxContainers.Items.Add(containerName);
+                        }
+                    }
+
+                    MessageBox.Show($"{containers.Count} order(s) found.");
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    MessageBox.Show("App not found or without orders.");
+                    listBoxContainers.Items.Clear();
+                }
+                else
+                {
+                    MessageBox.Show("Error on finding orders: " + response.Content);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error on finding orders: " + ex.Message);
+            }
         }
 
         private void GestorEncomendaForm_FormClosing(object sender, FormClosingEventArgs e)
