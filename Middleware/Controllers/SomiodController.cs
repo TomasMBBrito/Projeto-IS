@@ -32,6 +32,15 @@ namespace Middleware.Controllers
         // APPLICATION ENDPOINTS
         // ============================================
 
+        /// <summary>
+        /// Get Discover
+        /// </summary>
+        /// <remarks>Gets the Discoveries</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpGet]
         [Route("")]
         public IHttpActionResult GetDiscover()
@@ -141,7 +150,15 @@ namespace Middleware.Controllers
             }
         }
 
-        // POST api/somiod - Create Application
+        /// <summary>
+        /// Create Application
+        /// </summary>
+        /// <param name="request">Request</param>
+        /// <remarks>Create a new application in the system</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="201">Created</response>
+        /// <returns></returns>
         [HttpPost]
         [Route("")]
         public IHttpActionResult CreateApplication([FromBody] CreateResourceRequest request)
@@ -194,8 +211,16 @@ namespace Middleware.Controllers
             }
         }
 
-        //GET APPLICATION OR DISCOVER RELATED TO APPLICATIONS
-
+        /// <summary>
+        /// Get Application or Discover Related To
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <remarks>Gets the application or discovers related to application</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpGet]
         [Route("{appName}")]
         public IHttpActionResult GetApplicationOrDiscoverRelatedTo(string appName)
@@ -308,7 +333,18 @@ namespace Middleware.Controllers
         }
 
 
-
+        /// <summary>
+        /// Update Application
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="request">Request</param>
+        /// <remarks>Update an existing application in the system</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="409">Conflict</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpPut]
         [Route("{appName}")]
         public IHttpActionResult UpdateApplication(string appName, [FromBody] CreateResourceRequest request)
@@ -364,7 +400,16 @@ namespace Middleware.Controllers
             }
         }
 
-
+        /// <summary>
+        /// Delete Application
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <remarks>Delete an existing application in the system</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpDelete]
         [Route("{appName}")]
         public IHttpActionResult DeleteApplication(string appName)
@@ -413,7 +458,18 @@ namespace Middleware.Controllers
         // CONTAINER ENDPOINTS
         // ============================================
 
-        // POST api/somiod/{appName} - Create Container
+        /// <summary>
+        /// Create Container
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="request">Request</param>
+        /// <remarks> Creates a container in the selected application</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="201">Created</response>
+        /// <returns></returns>
+        // POST api/somiod/{appName}
         [HttpPost]
         [Route("{appName}")]
         public IHttpActionResult CreateContainer(string appName, [FromBody] CreateResourceRequest request)
@@ -485,6 +541,17 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Get Container
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <remarks>Gets the container in the selected application</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         //[HttpGet]
         //[Route("{appName}/{containerName}")]
         public IHttpActionResult GetContainer(string appName, string containerName)
@@ -542,6 +609,17 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Get container or discover related to
+        /// </summary>
+        /// <param name="appName"></param>
+        /// <param name="containerName"></param>
+        /// <remarks>Gets the container in the specified app or discovers related to</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpGet]
         [Route("{appName}/{containerName}")]
         public IHttpActionResult GetContainerOrDiscoverRelatedTo(string appName, string containerName)
@@ -662,6 +740,19 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Update Container
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <param name="request">Request</param>
+        /// <remarks>Update the specified container in the specified app</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="409">Conflict</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpPut]
         [Route("{appName}/{containerName}")]
         public IHttpActionResult UpdateContainer(string appName, string containerName, [FromBody] CreateResourceRequest request)
@@ -740,6 +831,17 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Delete container
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <remarks>Deletes the container in the specified app</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpDelete]
         [Route("{appName}/{containerName}")]
         public IHttpActionResult DeleteContainer(string appName, string containerName)
@@ -790,6 +892,18 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Create Content Instance or Subscription
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <param name="request">Request</param>
+        /// <remarks>Creates Content Instance or Subscription in the specified container</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="201">Created</response>
+        /// <returns></returns>
         [HttpPost]
         [Route("{appName}/{containerName}")]
         public async Task<IHttpActionResult> CreateContentInstanceOrSubscription(string appName, string containerName, [FromBody] CreateResourceRequest request)
@@ -947,6 +1061,18 @@ namespace Middleware.Controllers
            
         }
 
+        /// <summary>
+        /// Get Content Instance
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <param name="ciName">Content Instance Name</param>
+        /// <remarks>Gets the content instance in the specified container</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpGet]
         [Route("{appName}/{containerName}/{ciName}")]
         public IHttpActionResult GetContentInstance(string appName, string containerName, string ciName)
@@ -1001,6 +1127,18 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Get Subscription
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <param name="subName">Subscription Name</param>
+        /// <remarks>Gets the subscription in the specified container</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpGet]
         [Route("{appName}/{containerName}/subs/{subName}")]
         public IHttpActionResult GetSubscription(string appName, string containerName, string subName)
@@ -1055,6 +1193,18 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Delete Content Instance
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <param name="ciName">Content Instance Name</param>
+        /// <remarks>Deletes the content instance in the specified container</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpDelete]
         [Route("{appName}/{containerName}/{ciName}")]
         public async Task<IHttpActionResult> DeleteContentInstance(string appName, string containerName, string ciName)
@@ -1135,6 +1285,18 @@ namespace Middleware.Controllers
             }
         }
 
+        /// <summary>
+        /// Delete Subscription
+        /// </summary>
+        /// <param name="appName">Application Name</param>
+        /// <param name="containerName">Container Name</param>
+        /// <param name="subName">Subscription Name</param>
+        /// <remarks>Deletes the subscription in the specified container</remarks>
+        /// <response code="400">Bad Request</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="200">OK</response>
+        /// <returns></returns>
         [HttpDelete]
         [Route("{appName}/{containerName}/subs/{subName}")]
         public IHttpActionResult DeleteSubscription(string appName, string containerName, string subName)
