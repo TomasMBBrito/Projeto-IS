@@ -8,24 +8,145 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace Gestor_Armazem
 {
     public partial class GestorEncomendaForm : Form
     {
-        string baseURI = @"http://localhost:61331/";
+        string baseURI = @"http://localhost:61331/api/somiod";
         string app_name = "FnacWarehouse_UpsideDown";
+
+        private Thread searchThread;
+        private bool isSearching = false;
+        private int searchInterval = 5000; 
         public GestorEncomendaForm()
         {
             InitializeComponent();
         }
 
+        private void UpdateApplicationsList(List<string> applications)
+        {
+            // Clear and repopulate only if the list has changed
+            if (applications == null || applications.Count == 0)
+            {
+                if (listBoxApplications.Items.Count > 0)
+                {
+                    listBoxApplications.Items.Clear();
+                }
+                return;
+            }
+
+            // Get current items
+            var currentItems = new HashSet<string>();
+            foreach (string item in listBoxApplications.Items)
+            {
+                currentItems.Add(item);
+            }
+
+            // Get new items
+            var newItems = new HashSet<string>(applications);
+
+            // Remove items that are no longer in the list
+            for (int i = listBoxApplications.Items.Count - 1; i >= 0; i--)
+            {
+                string item = listBoxApplications.Items[i].ToString();
+                if (!newItems.Contains(item))
+                {
+                    listBoxApplications.Items.RemoveAt(i);
+                }
+            }
+
+            // Add new items that aren't already in the list
+            foreach (var app in applications)
+            {
+                if (!currentItems.Contains(app))
+                {
+                    listBoxApplications.Items.Add(app);
+                }
+            }
+        }
+
+        private string ExtractApplicationName(string path)
+        {
+            // Extract application name from path like "/api/somiod/FnacClient_Vecna"
+            if (string.IsNullOrEmpty(path)) return null;
+
+            var parts = path.Split('/');
+            return parts.Length > 0 ? parts[parts.Length - 1] : null;
+        }
+
+        private void SearchApplicationsThreadMethod()
+        {
+            while (isSearching)
+            {
+                try
+                {
+                    var clientRest = new RestClient(baseURI);
+                    var request = new RestRequest("", Method.Get);
+                    request.AddHeader("somiod-discovery", "application");
+                    request.RequestFormat = DataFormat.Json;
+
+                    var response = clientRest.Execute(request);
+
+                    if (response.StatusCode == HttpStatusCode.OK && response.Content != null)
+                    {
+                        var applications = JsonConvert.DeserializeObject<List<string>>(response.Content);
+
+                        // Filter and extract FnacClient_ applications
+                        var filteredApps = applications
+                            .Select(path => ExtractApplicationName(path))
+                            .Where(name => !string.IsNullOrEmpty(name) && name.StartsWith("FnacClient_"))
+                            .ToList();
+
+                        // Update UI on the UI thread
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            UpdateApplicationsList(filteredApps);
+                        });
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error retrieving applications: " + response.Content);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Exception in search thread: " + ex.Message);
+                }
+
+                // Wait before next search
+                Thread.Sleep(searchInterval);
+            }
+        }
+
+        private void StartSearchThread()
+        {
+            if (searchThread == null || !searchThread.IsAlive)
+            {
+                isSearching = true;
+                searchThread = new Thread(SearchApplicationsThreadMethod);
+                searchThread.IsBackground = true; // Thread will stop when form closes
+                searchThread.Start();
+            }
+        }
+
+        private void StopSearchThread()
+        {
+            isSearching = false;
+            if (searchThread != null && searchThread.IsAlive)
+            {
+                searchThread.Join(2000); // Wait up to 2 seconds for thread to finish
+            }
+        }
+
         private void CriarAplicacao()
         {
             var client_rest = new RestClient(baseURI);
-            var request = new RestRequest("api/somiod", Method.Post);
+            var request = new RestRequest("", Method.Post);
             //request.AddHeader("content-type", "application/json");
             var application = new CreateResourceRequest()
             {
@@ -52,7 +173,7 @@ namespace Gestor_Armazem
             }
             else if (response.StatusCode == HttpStatusCode.Conflict)
             {
-                MessageBox.Show("Application already exists. Procede");
+                //MessageBox.Show("Application already exists. Procede");
                 return;
             }
             else
@@ -65,27 +186,20 @@ namespace Gestor_Armazem
         private void GestorEncomendaForm_Load(object sender, EventArgs e)
         {
             //CriarAplicacao();
-
             listBoxApplications.Items.Clear();
 
-            //var clientRest = new RestClient(baseURI);
-            //var request = new RestRequest("", Method.Get);
-            //request.AddHeader("somiod-discovery", "application");
-            //request.RequestFormat = DataFormat.Json;
+            // Start the background search thread
+            StartSearchThread();
+        }
 
-            //var response = clientRest.Execute(request);
-            //if (response.StatusCode == HttpStatusCode.OK)
-            //{
-            //    var applications = JsonConvert.DeserializeObject<List<string>>(response.Content);
-            //    foreach (var app in applications)
-            //    {
-            //        listBoxApplications.Items.Add(app);
-            //    }
-            //}
-            //else
-            //{
-            //    MessageBox.Show("Error retrieving applications: " + response.Content);
-            //}
+        private void btnDiscoverOrders_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void GestorEncomendaForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            StopSearchThread();
         }
     }
 }

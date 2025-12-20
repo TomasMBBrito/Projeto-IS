@@ -134,6 +134,7 @@
             this.Controls.Add(this.textBoxProduto);
             this.Name = "EncomendaForm";
             this.Text = "EncomendaForm";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EncomendaForm_FormClosing);
             this.Load += new System.EventHandler(this.EncomendaForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.product_quantity)).EndInit();
             this.ResumeLayout(false);

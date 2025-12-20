@@ -36,7 +36,7 @@
             this.button2 = new System.Windows.Forms.Button();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
-            this.button4 = new System.Windows.Forms.Button();
+            this.btnDiscoverOrders = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // listBoxApplications
@@ -109,21 +109,22 @@
             this.label3.TabIndex = 8;
             this.label3.Text = "Order Status";
             // 
-            // button4
+            // btnDiscoverOrders
             // 
-            this.button4.Location = new System.Drawing.Point(282, 104);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(155, 105);
-            this.button4.TabIndex = 9;
-            this.button4.Text = "Descobrir Encomendas";
-            this.button4.UseVisualStyleBackColor = true;
+            this.btnDiscoverOrders.Location = new System.Drawing.Point(282, 104);
+            this.btnDiscoverOrders.Name = "btnDiscoverOrders";
+            this.btnDiscoverOrders.Size = new System.Drawing.Size(155, 105);
+            this.btnDiscoverOrders.TabIndex = 9;
+            this.btnDiscoverOrders.Text = "Descobrir Encomendas";
+            this.btnDiscoverOrders.UseVisualStyleBackColor = true;
+            this.btnDiscoverOrders.Click += new System.EventHandler(this.btnDiscoverOrders_Click);
             // 
             // GestorEncomendaForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 730);
-            this.Controls.Add(this.button4);
+            this.Controls.Add(this.btnDiscoverOrders);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.button2);
@@ -134,6 +135,7 @@
             this.Controls.Add(this.listBoxApplications);
             this.Name = "GestorEncomendaForm";
             this.Text = "GestorEncomendasForm";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.GestorEncomendaForm_FormClosing);
             this.Load += new System.EventHandler(this.GestorEncomendaForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -150,7 +152,7 @@
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Button button4;
+        private System.Windows.Forms.Button btnDiscoverOrders;
     }
 }
 
