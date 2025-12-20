@@ -206,7 +206,7 @@ namespace Gestor_Armazem
             // Verificar se há uma aplicação selecionada
             if (listBoxApplications.SelectedItem == null)
             {
-                MessageBox.Show("Please select an app first.");
+                MessageBox.Show("Please select a client first.");
                 return;
             }
 
@@ -263,6 +263,82 @@ namespace Gestor_Armazem
         private void GestorEncomendaForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             StopSearchThread();
+        }
+
+        private void btnProcessOrder_Click(object sender, EventArgs e)
+        {
+            ProcessOrder("Processing");
+        }
+
+        private void btnShipOrder_Click(object sender, EventArgs e)
+        {
+            ProcessOrder("Sending");
+        }
+
+        private void btnDeliverOrder_Click(object sender, EventArgs e)
+        {
+            ProcessOrder("Delivered");
+        }
+
+        private void ProcessOrder(string status)
+        {
+            if (listBoxApplications.SelectedItem == null)
+            {
+                MessageBox.Show("Please,select a client first");
+                return;
+            }
+
+            if (listBoxContainers.SelectedItem == null)
+            {
+                MessageBox.Show("Please, select an order first");
+                return;
+            }
+
+            string selectedApp = listBoxApplications.SelectedItem.ToString();
+            string selectedOrder = listBoxContainers.SelectedItem.ToString();
+
+            try
+            {
+                var clientRest = new RestClient(baseURI);
+                var request = new RestRequest($"/{selectedApp}/{selectedOrder}", Method.Post);
+
+                // Criar o content-instance com informação do status
+                var contentInstance = new CreateResourceRequest()
+                {
+                    ResType = "content-instance",
+                    ResourceName = $"status_{DateTime.Now.Ticks}",
+                    ContentType = "application/json",
+                    Content = JsonConvert.SerializeObject(new
+                    {
+                        status = status,
+                        timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        processedBy = app_name
+                    })
+                };
+
+                string jsonBody = JsonConvert.SerializeObject(contentInstance);
+                request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
+
+                var response = clientRest.Execute(request);
+
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    MessageBox.Show($"Order updated to: {status}\n\nThe client will be notified via MQTT!");
+
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    MessageBox.Show("Client or Order not found.");
+                }
+                else
+                {
+                    MessageBox.Show("Error on processing order: " + response.Content);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error on processing order: " + ex.Message);
+            }
         }
     }
 }

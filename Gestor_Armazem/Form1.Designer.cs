@@ -32,11 +32,11 @@
             this.listBoxContainers = new System.Windows.Forms.ListBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.label3 = new System.Windows.Forms.Label();
+            this.labelOrderStatus = new System.Windows.Forms.Label();
             this.btnDiscoverOrders = new System.Windows.Forms.Button();
+            this.btnProcessOrder = new System.Windows.Forms.Button();
+            this.btnShipOrder = new System.Windows.Forms.Button();
+            this.btnDeliverOrder = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // listBoxApplications
@@ -75,39 +75,14 @@
             this.label2.TabIndex = 3;
             this.label2.Text = "Containers associados";
             // 
-            // button1
+            // labelOrderStatus
             // 
-            this.button1.Location = new System.Drawing.Point(16, 647);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(167, 50);
-            this.button1.TabIndex = 4;
-            this.button1.Text = "Start Order processing";
-            this.button1.UseVisualStyleBackColor = true;
-            // 
-            // button2
-            // 
-            this.button2.Location = new System.Drawing.Point(215, 647);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(167, 50);
-            this.button2.TabIndex = 5;
-            this.button2.Text = "Update Order Status";
-            this.button2.UseVisualStyleBackColor = true;
-            // 
-            // textBox1
-            // 
-            this.textBox1.Location = new System.Drawing.Point(16, 597);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(167, 22);
-            this.textBox1.TabIndex = 7;
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(13, 569);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(81, 16);
-            this.label3.TabIndex = 8;
-            this.label3.Text = "Order Status";
+            this.labelOrderStatus.AutoSize = true;
+            this.labelOrderStatus.Location = new System.Drawing.Point(13, 569);
+            this.labelOrderStatus.Name = "labelOrderStatus";
+            this.labelOrderStatus.Size = new System.Drawing.Size(90, 16);
+            this.labelOrderStatus.TabIndex = 8;
+            this.labelOrderStatus.Text = "Order Status : ";
             // 
             // btnDiscoverOrders
             // 
@@ -119,16 +94,46 @@
             this.btnDiscoverOrders.UseVisualStyleBackColor = true;
             this.btnDiscoverOrders.Click += new System.EventHandler(this.btnDiscoverOrders_Click);
             // 
+            // btnProcessOrder
+            // 
+            this.btnProcessOrder.Location = new System.Drawing.Point(16, 599);
+            this.btnProcessOrder.Name = "btnProcessOrder";
+            this.btnProcessOrder.Size = new System.Drawing.Size(141, 51);
+            this.btnProcessOrder.TabIndex = 10;
+            this.btnProcessOrder.Text = "Process Order";
+            this.btnProcessOrder.UseVisualStyleBackColor = true;
+            this.btnProcessOrder.Click += new System.EventHandler(this.btnProcessOrder_Click);
+            // 
+            // btnShipOrder
+            // 
+            this.btnShipOrder.Location = new System.Drawing.Point(186, 599);
+            this.btnShipOrder.Name = "btnShipOrder";
+            this.btnShipOrder.Size = new System.Drawing.Size(141, 51);
+            this.btnShipOrder.TabIndex = 11;
+            this.btnShipOrder.Text = "Ship Order";
+            this.btnShipOrder.UseVisualStyleBackColor = true;
+            this.btnShipOrder.Click += new System.EventHandler(this.btnShipOrder_Click);
+            // 
+            // btnDeliverOrder
+            // 
+            this.btnDeliverOrder.Location = new System.Drawing.Point(352, 599);
+            this.btnDeliverOrder.Name = "btnDeliverOrder";
+            this.btnDeliverOrder.Size = new System.Drawing.Size(141, 51);
+            this.btnDeliverOrder.TabIndex = 12;
+            this.btnDeliverOrder.Text = "Deliver Order";
+            this.btnDeliverOrder.UseVisualStyleBackColor = true;
+            this.btnDeliverOrder.Click += new System.EventHandler(this.btnDeliverOrder_Click);
+            // 
             // GestorEncomendaForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 730);
+            this.Controls.Add(this.btnDeliverOrder);
+            this.Controls.Add(this.btnShipOrder);
+            this.Controls.Add(this.btnProcessOrder);
             this.Controls.Add(this.btnDiscoverOrders);
-            this.Controls.Add(this.label3);
-            this.Controls.Add(this.textBox1);
-            this.Controls.Add(this.button2);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.labelOrderStatus);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.listBoxContainers);
@@ -148,11 +153,11 @@
         private System.Windows.Forms.ListBox listBoxContainers;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Button button2;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Label labelOrderStatus;
         private System.Windows.Forms.Button btnDiscoverOrders;
+        private System.Windows.Forms.Button btnProcessOrder;
+        private System.Windows.Forms.Button btnShipOrder;
+        private System.Windows.Forms.Button btnDeliverOrder;
     }
 }
 

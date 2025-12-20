@@ -14,5 +14,11 @@ namespace Gestor_Armazem
 
         [JsonProperty("resource-name")]
         public string ResourceName { get; set; }
+
+        [JsonProperty("content-type")]
+        public string ContentType { get; set; }
+
+        [JsonProperty("content")]
+        public string Content { get; set; }
     }
 }
