@@ -324,6 +324,7 @@ namespace Gestor_Armazem
                 if (response.StatusCode == HttpStatusCode.Created)
                 {
                     MessageBox.Show($"Order updated to: {status}\n\nThe client will be notified via MQTT!");
+                    labelOrderStatus.Text = "Order Status: " + status;
 
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
