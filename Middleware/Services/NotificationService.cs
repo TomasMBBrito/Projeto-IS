@@ -29,9 +29,6 @@ namespace Middleware.Services
         /// </summary>
         public async Task TriggerNotifications(int container_id, int event_type, object resource_data, string container_path)
         {
-            System.Diagnostics.Debug.WriteLine("=== TRIGGER NOTIFICATIONS ===");
-            System.Diagnostics.Debug.WriteLine($"ContainerId: {container_id}");
-            System.Diagnostics.Debug.WriteLine($"Event: {event_type}");
 
             try
             {
@@ -66,7 +63,6 @@ namespace Middleware.Services
                         }
                         else if (IsMqttEndpoint(subscription.Endpoint))
                         {
-                            System.Diagnostics.Debug.WriteLine($"AAAAA");
                             await SendMqttNotification(subscription.Endpoint, container_path, jsonPayload);
                         }
                         else
@@ -161,9 +157,11 @@ namespace Middleware.Services
             {
                 // Parse broker endpoint (ex: "mqtt://localhost:1883" ou apenas "localhost")
                 string broker = ParseMqttBroker(brokerEndpoint);
-                int port = ParseMqttPort(brokerEndpoint);
+                //int port = ParseMqttPort(brokerEndpoint);
 
-                client = new MqttClient(broker, port, false, null, null, MqttSslProtocols.None);
+                //client = new MqttClient(broker, port, false, null, null, MqttSslProtocols.None);
+
+                client = new MqttClient(broker);
 
                 // Conectar ao broker
                 string clientId = Guid.NewGuid().ToString();
@@ -190,22 +188,14 @@ namespace Middleware.Services
                         false))
                     .ConfigureAwait(false);
 
-                System.Diagnostics.Debug.WriteLine($"BBBBBBBBb");
+                await Task.Delay(1000);
 
-                Console.WriteLine($"[SUCCESS] MQTT notification sent to {broker}:{port} on topic {topic}");
+                //Console.WriteLine($"[SUCCESS] MQTT notification sent to {broker}:{port} on topic {topic}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] MQTT notification exception: {ex.Message}");
                 throw;
-            }
-            finally
-            {
-                if (client != null && client.IsConnected)
-                {
-                    await Task.Run(() => client.Disconnect())
-                              .ConfigureAwait(false);
-                }
             }
         }
 

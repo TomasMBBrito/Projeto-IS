@@ -61,7 +61,7 @@ namespace Aplicação_cliente
         {
             this.Invoke((MethodInvoker) delegate
             {
-                System.Diagnostics.Debug.WriteLine($"fsefesfsfe");
+                //System.Diagnostics.Debug.WriteLine($"fsefesfsfe");
                 try
                 {
                     string message = Encoding.UTF8.GetString(e.Message);

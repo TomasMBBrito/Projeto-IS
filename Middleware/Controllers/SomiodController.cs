@@ -906,7 +906,7 @@ namespace Middleware.Controllers
                             CreationDatetime = createdAt.ToString("yyyy-MM-ddTHH:mm:ss")
                         };
 
-                        string containerPath = $"api/somiod/{appName}/{containerName}";
+                        string containerPath = $"{appName}/{containerName}";
                         await _notificationService.TriggerNotifications(
                             container.Id,
                             1,
