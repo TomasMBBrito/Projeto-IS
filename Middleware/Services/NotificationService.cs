@@ -1,14 +1,17 @@
 ﻿using Middleware.Models;
+using Middleware.DTOs;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web;
+using System.Xml;
+using System.Xml.Schema;
+using System.Xml.Serialization;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 
@@ -18,18 +21,42 @@ namespace Middleware.Services
     {
         private readonly string _connectionString;
         private static readonly HttpClient _httpClient = new HttpClient();
+        private readonly string _xsdPath;
+        private XmlSchemaSet _schemaSet;
 
-        public NotificationService(string connectionString)
+        public NotificationService(string connectionString, string xsdPath = null)
         {
             _connectionString = connectionString;
+            _xsdPath = xsdPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NotificationSchema.xsd");
+
+            // Load XSD schema
+            LoadXsdSchema();
         }
 
-        ///<summary>
+        /// <summary>
+        /// Load and compile the XSD schema
+        /// </summary>
+        private void LoadXsdSchema()
+        {
+            try
+            {
+                _schemaSet = new XmlSchemaSet();
+                _schemaSet.Add("http://schemas.somiod.com/notification", _xsdPath);
+                _schemaSet.Compile();
+                Console.WriteLine("[INFO] XSD Schema loaded successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARNING] Failed to load XSD schema: {ex.Message}");
+                _schemaSet = null;
+            }
+        }
+
+        /// <summary>
         /// Trigger notifications to subscriptions of the container
         /// </summary>
         public async Task TriggerNotifications(int container_id, int event_type, object resource_data, string container_path)
         {
-
             try
             {
                 List<Subscription> subscriptions = GetSubscriptionsForEvent(container_id, event_type);
@@ -41,29 +68,33 @@ namespace Middleware.Services
                     return;
                 }
 
-                // Preparar payload da notificação
-                var notificationPayload = new
+                // Convert resource_data to XML model
+                NotificationXml notification = CreateNotificationXml(event_type, resource_data);
+
+                // Serialize to XML
+                string xmlPayload = SerializeToXml(notification);
+
+                // Validate against XSD
+                if (!ValidateXml(xmlPayload))
                 {
-                    evt = event_type,
-                    eventType = event_type == 1 ? "creation" : "deletion",
-                    resource = resource_data,
-                    timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
-                };
+                    Console.WriteLine("[ERROR] XML validation failed. Notification not sent.");
+                    return;
+                }
 
-                string jsonPayload = JsonConvert.SerializeObject(notificationPayload, Formatting.Indented);
+                Console.WriteLine("[SUCCESS] XML validated successfully");
 
-                // Disparar notificações para cada subscription
+                // Trigger notifications for each subscription
                 foreach (var subscription in subscriptions)
                 {
                     try
                     {
                         if (IsHttpEndpoint(subscription.Endpoint))
                         {
-                            await SendHttpNotification(subscription.Endpoint, jsonPayload);
+                            await SendHttpNotification(subscription.Endpoint, xmlPayload);
                         }
                         else if (IsMqttEndpoint(subscription.Endpoint))
                         {
-                            await SendMqttNotification(subscription.Endpoint, container_path, jsonPayload);
+                            await SendMqttNotification(subscription.Endpoint, container_path, xmlPayload);
                         }
                         else
                         {
@@ -73,7 +104,6 @@ namespace Middleware.Services
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[ERROR] Failed to send notification to {subscription.Endpoint}: {ex.Message}");
-                        // Continuar a enviar para outras subscriptions mesmo que uma falhe
                     }
                 }
             }
@@ -84,6 +114,117 @@ namespace Middleware.Services
             }
         }
 
+        /// <summary>
+        /// Create NotificationXml object from resource data
+        /// </summary>
+        private NotificationXml CreateNotificationXml(int event_type, object resource_data)
+        {
+            var notification = new NotificationXml
+            {
+                Evt = event_type,
+                EventType = event_type == 1 ? "creation" : "deletion",
+                Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
+                Resource = new ResourceXml()
+            };
+
+            // Determine resource type and populate
+            if (resource_data is ContentInstanceResponse ciResponse)
+            {
+                notification.Resource.Data = new ContentInstanceXml
+                {
+                    ResourceName = ciResponse.ResourceName,
+                    ContentType = ciResponse.ContentType,
+                    Content = ciResponse.Content,
+                    CreationDatetime = ciResponse.CreationDatetime
+                };
+            }
+            else if (resource_data is SubscriptionResponse subResponse)
+            {
+                notification.Resource.Data = new SubscriptionXml
+                {
+                    ResourceName = subResponse.ResourceName,
+                    Evt = subResponse.Evt,
+                    Endpoint = subResponse.Endpoint,
+                    CreationDatetime = subResponse.CreationDatetime
+                };
+            }
+            else
+            {
+                throw new ArgumentException("Invalid resource data type");
+            }
+
+            return notification;
+        }
+
+        /// <summary>
+        /// Serialize NotificationXml to XML string
+        /// </summary>
+        private string SerializeToXml(NotificationXml notification)
+        {
+            try
+            {
+                var serializer = new XmlSerializer(typeof(NotificationXml));
+                var settings = new XmlWriterSettings
+                {
+                    Indent = true,
+                    OmitXmlDeclaration = false,
+                    Encoding = Encoding.UTF8
+                };
+
+                using (var stringWriter = new StringWriter())
+                using (var xmlWriter = XmlWriter.Create(stringWriter, settings))
+                {
+                    serializer.Serialize(xmlWriter, notification);
+                    return stringWriter.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] XML serialization failed: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Validate XML against XSD schema
+        /// </summary>
+        private bool ValidateXml(string xmlContent)
+        {
+            if (_schemaSet == null)
+            {
+                Console.WriteLine("[WARNING] XSD schema not loaded. Skipping validation.");
+                return true; // Allow notification if schema not loaded
+            }
+
+            try
+            {
+                var settings = new XmlReaderSettings
+                {
+                    Schemas = _schemaSet,
+                    ValidationType = ValidationType.Schema
+                };
+
+                bool isValid = true;
+                settings.ValidationEventHandler += (sender, args) =>
+                {
+                    Console.WriteLine($"[VALIDATION ERROR] {args.Severity}: {args.Message}");
+                    isValid = false;
+                };
+
+                using (var stringReader = new StringReader(xmlContent))
+                using (var xmlReader = XmlReader.Create(stringReader, settings))
+                {
+                    while (xmlReader.Read()) { }
+                }
+
+                return isValid;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] XML validation exception: {ex.Message}");
+                return false;
+            }
+        }
 
         private List<Subscription> GetSubscriptionsForEvent(int container_id, int eventype)
         {
@@ -120,13 +261,13 @@ namespace Middleware.Services
         }
 
         /// <summary>
-        /// Envia notificação via HTTP POST
+        /// Send notification via HTTP POST
         /// </summary>
-        private async Task SendHttpNotification(string endpoint, string jsonPayload)
+        private async Task SendHttpNotification(string endpoint, string xmlPayload)
         {
             try
             {
-                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                var content = new StringContent(xmlPayload, Encoding.UTF8, "application/xml");
 
                 var response = await _httpClient.PostAsync(endpoint, content);
 
@@ -149,21 +290,15 @@ namespace Middleware.Services
         /// <summary>
         /// Send notification via MQTT
         /// </summary>
-        private async Task SendMqttNotification(string brokerEndpoint, string containerPath, string jsonPayload)
+        private async Task SendMqttNotification(string brokerEndpoint, string containerPath, string xmlPayload)
         {
             MqttClient client = null;
 
             try
             {
-                // Parse broker endpoint (ex: "mqtt://localhost:1883" ou apenas "localhost")
                 string broker = ParseMqttBroker(brokerEndpoint);
-                //int port = ParseMqttPort(brokerEndpoint);
-
-                //client = new MqttClient(broker, port, false, null, null, MqttSslProtocols.None);
-
                 client = new MqttClient(broker);
 
-                // Conectar ao broker
                 string clientId = Guid.NewGuid().ToString();
 
                 await Task.Run(() => client.Connect(clientId))
@@ -174,82 +309,57 @@ namespace Middleware.Services
                     throw new Exception("Failed to connect to MQTT broker");
                 }
 
-                // O canal/topic é o path do container
                 string topic = containerPath;
-                System.Diagnostics.Debug.WriteLine(jsonPayload);
+                System.Diagnostics.Debug.WriteLine(xmlPayload);
 
-
-                // Publicar mensagem
                 await Task.Run(() =>
                     client.Publish(
                         topic,
-                        Encoding.UTF8.GetBytes(jsonPayload),
+                        Encoding.UTF8.GetBytes(xmlPayload),
                         MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE,
                         false))
                     .ConfigureAwait(false);
 
                 await Task.Delay(1000);
 
-                //Console.WriteLine($"[SUCCESS] MQTT notification sent to {broker}:{port} on topic {topic}");
+                Console.WriteLine($"[SUCCESS] MQTT notification sent to {broker} on topic {topic}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] MQTT notification exception: {ex.Message}");
                 throw;
             }
+            finally
+            {
+                if (client != null && client.IsConnected)
+                {
+                    client.Disconnect();
+                }
+            }
         }
 
-
-        /// <summary>
-        /// Verify if endpoint is HTTP
-        /// </summary>
         private bool IsHttpEndpoint(string endpoint)
         {
             return endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                    endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Verify if endpoint is MQTT
-        /// </summary>
         private bool IsMqttEndpoint(string endpoint)
         {
             return endpoint.StartsWith("mqtt://", StringComparison.OrdinalIgnoreCase) ||
                    (!endpoint.Contains("http://") && !endpoint.Contains("https://"));
         }
 
-        /// <summary>
-        /// Extract  broker from endpoint MQTT
-        /// </summary>
         private string ParseMqttBroker(string endpoint)
         {
-            // Remove "mqtt://" se existir
             string broker = endpoint.Replace("mqtt://", "");
 
-            // Remove porta se existir
             if (broker.Contains(":"))
             {
                 broker = broker.Split(':')[0];
             }
 
             return broker;
-        }
-
-        /// <summary>
-        /// Extract port from endpoint MQTT (default: 1883)
-        /// </summary>
-        private int ParseMqttPort(string endpoint)
-        {
-            if (endpoint.Contains(":"))
-            {
-                string[] parts = endpoint.Replace("mqtt://", "").Split(':');
-                if (parts.Length > 1 && int.TryParse(parts[1], out int port))
-                {
-                    return port;
-                }
-            }
-
-            return 1883; // Port default MQTT
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.SqlClient;
 using System.Diagnostics.Eventing.Reader;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -25,7 +26,8 @@ namespace Middleware.Controllers
         // Constructor
         public SomiodController()
         {
-            _notificationService = new NotificationService(Connectstring);
+            string xsdPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NotificationSchema.xsd");
+            _notificationService = new NotificationService(Connectstring, xsdPath);
         }
 
         // ============================================

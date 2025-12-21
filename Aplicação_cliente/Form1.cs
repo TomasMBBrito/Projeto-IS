@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 
@@ -47,8 +48,6 @@ namespace Aplicação_cliente
                     client = null; // Garantir que está null se falhar
                     return;
                 }
-
-                MessageBox.Show("Connected to MQTT broker!");
             }
             catch (Exception ex)
             {
@@ -59,22 +58,17 @@ namespace Aplicação_cliente
 
         private void Client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
-            this.Invoke((MethodInvoker) delegate
+            this.Invoke((MethodInvoker)delegate
             {
-                //System.Diagnostics.Debug.WriteLine($"fsefesfsfe");
                 try
                 {
-                    string message = Encoding.UTF8.GetString(e.Message);
+                    string xmlMessage = Encoding.UTF8.GetString(e.Message);
                     string topic = e.Topic;
 
-                    // DEBUG: Show the raw message first
-                    MessageBox.Show($"RAW MESSAGE RECEIVED:\n\nTopic: {topic}\n\nMessage:\n{message}");
+                    // Parse the XML notification
+                    var (orderName, status, success) = NotificationParser.ParseNotification(xmlMessage);
 
-                    // Parse the XML to extract order name and status
-                    string orderName = ExtractXmlValue(message, "OrderName");
-                    string status = ExtractXmlValue(message, "Status");
-
-                    if (!string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
+                    if (success && !string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
                     {
                         // Update the dictionary
                         orderStatuses[orderName] = status;
@@ -82,11 +76,20 @@ namespace Aplicação_cliente
                         // Update the ListBox
                         UpdateOrderStatusInListBox(orderName, status);
 
-                        MessageBox.Show($"Order Update Received!\n\nOrder: {orderName}\nStatus: {status}");
+                        // Get additional info
+                        string eventType = NotificationParser.GetEventType(xmlMessage);
+                        string timestamp = NotificationParser.GetTimestamp(xmlMessage);
+
+                        MessageBox.Show($"Order Update Received!\n\n" +
+                                      $"Order: {orderName}\n" +
+                                      $"Status: {status}\n" +
+                                      $"Event: {eventType}\n" +
+                                      $"Time: {timestamp}");
                     }
                     else
                     {
-                        MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {message}");
+                        // Fallback: show raw notification
+                        MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {xmlMessage}");
                     }
                 }
                 catch (Exception ex)
@@ -156,16 +159,7 @@ namespace Aplicação_cliente
             Console.WriteLine("JSON sendo enviado:");
             Console.WriteLine(jsonBody);
             var response = client_rest.Execute(request);
-            if (response.StatusCode == HttpStatusCode.Created)
-            {
-                MessageBox.Show("Application created.");
-                if (response.Content != null)
-                {
-                    MessageBox.Show("Response Content: " + response.Content);
-                }
-
-            }
-            else if (response.StatusCode == HttpStatusCode.Conflict)
+            if (response.StatusCode == HttpStatusCode.Conflict)
             {
                 //MessageBox.Show("Application already exists. Procede");
                 return;
@@ -252,14 +246,8 @@ namespace Aplicação_cliente
             string jsonBody = JsonConvert.SerializeObject(container);
             request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
             var response = client_rest.Execute(request);
-            if (response.StatusCode == HttpStatusCode.Created)
+            if(response.StatusCode == HttpStatusCode.Created)
             {
-                MessageBox.Show("Order created.");
-                if (response.Content != null)
-                {
-                    //MessageBox.Show("Response Content: " + response.Content);
-                }
-
             }
             else if (response.StatusCode == HttpStatusCode.Conflict)
             {
@@ -286,7 +274,6 @@ namespace Aplicação_cliente
             var resposta_sub = client_rest.Execute(request_subscription);
             if (resposta_sub.StatusCode == HttpStatusCode.Created)
             {
-                MessageBox.Show("Notifications about order activated.");
 
                 string topic =  $"{app_name}/{encomenda.name}";
 
@@ -317,6 +304,93 @@ namespace Aplicação_cliente
                 client.Disconnect();
             }
             //base.OnFormClosing(e);
+        }
+
+        /// <summary>
+        /// Helper class to parse XML notifications
+        /// </summary>
+        public static class NotificationParser
+        {
+            /// <summary>
+            /// Parse XML notification and extract order name and status
+            /// </summary>
+            public static (string orderName, string status, bool success) ParseNotification(string xmlContent)
+            {
+                try
+                {
+                    // Load XML
+                    XDocument doc = XDocument.Parse(xmlContent);
+                    XNamespace ns = "http://schemas.somiod.com/notification";
+
+                    // Get Resource element
+                    var resourceElement = doc.Root?.Element(ns + "Resource");
+                    if (resourceElement == null)
+                    {
+                        return (null, null, false);
+                    }
+
+                    // Check if it's a ContentInstance
+                    var contentInstance = resourceElement.Element(ns + "ContentInstance");
+                    if (contentInstance != null)
+                    {
+                        string content = contentInstance.Element(ns + "Content")?.Value;
+
+                        if (!string.IsNullOrEmpty(content))
+                        {
+                            // Parse the inner XML content (OrderUpdate)
+                            var orderDoc = XDocument.Parse(content);
+                            string orderName = orderDoc.Root?.Element("OrderName")?.Value;
+                            string status = orderDoc.Root?.Element("Status")?.Value;
+
+                            if (!string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
+                            {
+                                return (orderName, status, true);
+                            }
+                        }
+                    }
+
+                    return (null, null, false);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error parsing notification: {ex.Message}");
+                    return (null, null, false);
+                }
+            }
+
+            /// <summary>
+            /// Get event type from notification
+            /// </summary>
+            public static string GetEventType(string xmlContent)
+            {
+                try
+                {
+                    XDocument doc = XDocument.Parse(xmlContent);
+                    XNamespace ns = "http://schemas.somiod.com/notification";
+                    return doc.Root?.Element(ns + "EventType")?.Value;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            /// <summary>
+            /// Get timestamp from notification
+            /// </summary>
+            public static string GetTimestamp(string xmlContent)
+            {
+                try
+                {
+                    XDocument doc = XDocument.Parse(xmlContent);
+                    XNamespace ns = "http://schemas.somiod.com/notification";
+                    return doc.Root?.Element(ns + "Timestamp")?.Value;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
         }
     }
 }

@@ -164,7 +164,6 @@ namespace Gestor_Armazem
             var response = client_rest.Execute(request);
             if (response.StatusCode == HttpStatusCode.Created)
             {
-                MessageBox.Show("Application created.");
                 if (response.Content != null)
                 {
                     //MessageBox.Show("Response Content: " + response.Content);
@@ -311,7 +310,7 @@ namespace Gestor_Armazem
                 var response = clientRest.Execute(request);
                 if (response.StatusCode == HttpStatusCode.Created)
                 {
-                    MessageBox.Show($"Order updated to: {status}\n\nThe client will be notified via MQTT!");
+                    //MessageBox.Show($"Order updated to: {status}\n\nThe client will be notified via MQTT!");
                     labelOrderStatus.Text = "Order Status: " + status;
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
