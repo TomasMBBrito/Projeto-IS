@@ -489,6 +489,11 @@ namespace Aplicação_cliente
 
         private void GetStatus_Click(object sender, EventArgs e)
         {
+            if (listBoxEncomendas.SelectedItem == null)
+            {
+                MessageBox.Show("Please select an order to get its status.");
+                return;
+            }
             string selectedOrder = listBoxEncomendas.SelectedItem.ToString();
             var clientRest = new RestClient(baseURI);
             var requestDiscoverContentInstance = new RestRequest($"api/somiod/{app_name}/{selectedOrder}", Method.Get);
@@ -508,7 +513,7 @@ namespace Aplicação_cliente
                 {
                     MessageBox.Show("Error getting the existing content-instance");
                 }
-                ;
+                
                 JsonDocument doc = JsonDocument.Parse(responseGetContentInstance.Content);
                 JsonElement root = doc.RootElement;
 

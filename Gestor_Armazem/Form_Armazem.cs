@@ -8,6 +8,7 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -250,7 +251,7 @@ namespace Gestor_Armazem
             try
             {
                 var clientRest = new RestClient(baseURI);
-                var requestGetContentInstance = new RestRequest($"/{selectedApp}/{selectedOrder}", Method.Get);
+                var requestGetContentInstance = new RestRequest($"{selectedApp}/{selectedOrder}", Method.Get);
                 requestGetContentInstance.AddHeader("somiod-discovery", "content-instance");
                 requestGetContentInstance.RequestFormat = DataFormat.Json;
 
@@ -322,8 +323,47 @@ namespace Gestor_Armazem
                 return;
             }
 
+            string selectedApp = listBoxApplications.SelectedItem.ToString();
             string selectedOrder = listBoxContainers.SelectedItem.ToString();
-            string status = orderStatus.ContainsKey(selectedOrder) ? orderStatus[selectedOrder] : "Pending";
+            string status = "";
+            if (!orderStatus.ContainsKey(selectedOrder))
+            {
+                var clientRest = new RestClient(baseURI);
+                var requestDiscoverContentInstance = new RestRequest($"/{selectedApp}/{selectedOrder}", Method.Get);
+                requestDiscoverContentInstance.AddHeader("somiod-discovery", "content-instance");
+                requestDiscoverContentInstance.RequestFormat = DataFormat.Json;
+
+                var responseDiscoverContentInstace = clientRest.Execute(requestDiscoverContentInstance);
+
+                if (responseDiscoverContentInstace.StatusCode == HttpStatusCode.OK && responseDiscoverContentInstace.Content != null)
+                {
+                    var ciName = JsonConvert.DeserializeObject<List<string>>(responseDiscoverContentInstace.Content);
+                    var requestGetContentInstance = new RestRequest($"/{selectedApp}/{selectedOrder}/{ExtractName(ciName[0])}", Method.Get);
+                    var responseGetContentInstance = clientRest.Execute(requestGetContentInstance);
+
+                    if (responseGetContentInstance.StatusCode != HttpStatusCode.OK)
+                    {
+                        MessageBox.Show("Error getting the existing content-instance");
+                    }
+                    ;
+                    JsonDocument doc = JsonDocument.Parse(responseGetContentInstance.Content);
+                    JsonElement root = doc.RootElement;
+
+                    string content = root.GetProperty("content").GetString();
+
+                    status = content.Split('\n')
+                        .Where(line => line.Trim().StartsWith("<Status>"))
+                        .Select(line => line.Trim())
+                        .Select(line => line.Substring(
+                            line.IndexOf('>') + 1,                       // After opening tag
+                            line.LastIndexOf('<') - line.IndexOf('>') - 1 // Before closing tag
+                         ))
+                        .FirstOrDefault();
+                }
+            }
+            else             {
+                status = orderStatus[selectedOrder];
+            }
 
             labelOrderStatus.Text = "Order Status: " + status;
             UpdateButtonsForStatus(status);
