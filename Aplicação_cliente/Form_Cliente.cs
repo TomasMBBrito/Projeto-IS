@@ -65,14 +65,8 @@ namespace Aplicação_cliente
                     string xmlMessage = Encoding.UTF8.GetString(e.Message);
                     string topic = e.Topic;
 
-                    // 🔍 DEBUG: Show the raw XML first
-                    MessageBox.Show($"RAW XML RECEIVED:\n\n{xmlMessage}", "Debug - Raw XML");
-
                     // Parse the XML notification
                     var (orderName, status, success) = NotificationParser.ParseNotification(xmlMessage);
-
-                    // 🔍 DEBUG: Show what parser returned
-                    MessageBox.Show($"Parser Result:\nSuccess: {success}\nOrder: {orderName}\nStatus: {status}", "Debug - Parse Result");
 
                     if (success && !string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
                     {
@@ -94,9 +88,9 @@ namespace Aplicação_cliente
                     }
                     else
                     {
-                        MessageBox.Show($"Success: {success}; 1: {!string.IsNullOrEmpty(orderName)}; 2: {!string.IsNullOrEmpty(status)}");
+                        //MessageBox.Show($"Success: {success}; 1: {!string.IsNullOrEmpty(orderName)}; 2: {!string.IsNullOrEmpty(status)}");
                         // Fallback: show raw notification
-                        MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {xmlMessage}");
+                        //MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {xmlMessage}");
                     }
                 }
                 catch (Exception ex)
@@ -104,23 +98,6 @@ namespace Aplicação_cliente
                     MessageBox.Show($"Error processing notification: {ex.Message}");
                 }
             });
-        }
-
-        private string ExtractXmlValue(string xml, string tagName)
-        {
-            string startTag = $"<{tagName}>";
-            string endTag = $"</{tagName}>";
-
-            int startIndex = xml.IndexOf(startTag);
-            int endIndex = xml.IndexOf(endTag);
-
-            if (startIndex >= 0 && endIndex > startIndex)
-            {
-                startIndex += startTag.Length;
-                return xml.Substring(startIndex, endIndex - startIndex);
-            }
-
-            return null;
         }
 
         // Update the ListBox to show status next to order
@@ -377,12 +354,10 @@ namespace Aplicação_cliente
             app_name = app_name + username;
             var client_rest = new RestClient(baseURI);
             var request = new RestRequest("api/somiod", Method.Post);
-            //request.AddHeader("content-type", "application/json");
             var application = new CreateResourceRequest()
             {
                 ResType = "application",
                 ResourceName = app_name
-                //ResType = "application"
             };
 
             Console.WriteLine(application.ResType);
@@ -390,8 +365,6 @@ namespace Aplicação_cliente
 
             string jsonBody = JsonConvert.SerializeObject(application);
             request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
-            Console.WriteLine("JSON sendo enviado:");
-            Console.WriteLine(jsonBody);
             var response = client_rest.Execute(request);
             if (response.StatusCode == HttpStatusCode.Created)
             {

@@ -232,7 +232,7 @@ namespace Gestor_Armazem
                         }
                     }
 
-                    MessageBox.Show($"{containers.Count} order(s) found.");
+                    //MessageBox.Show($"{containers.Count} order(s) found.");
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {

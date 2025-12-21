@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Net;
 using System.Xml.Linq;
 
 namespace Aplicação_cliente
@@ -13,50 +15,42 @@ namespace Aplicação_cliente
                 XDocument doc = XDocument.Parse(xmlContent);
                 XNamespace ns = "http://schemas.somiod.com/notification";
 
-                // 🔍 DEBUG: Check root element
+                //Check root element
                 if (doc.Root == null)
                 {
                     Console.WriteLine("DEBUG: Root is NULL", "Parser Debug");
                     return (null, null, false);
                 }
 
-                // Get Resource element
                 var resourceElement = doc.Root.Element(ns + "Resource");
 
-                // 🔍 DEBUG: Check Resource
+                // Check Resource
                 if (resourceElement == null)
                 {
-                    Console.WriteLine("DEBUG: Resource element is NULL", "Parser Debug");
+                    Console.WriteLine("DEBUG: Resource element is NULL");
                     return (null, null, false);
                 }
 
                 // Check if it's a ContentInstance
                 var contentInstance = resourceElement.Element(ns + "ContentInstance");
-
-                // 🔍 DEBUG: Check ContentInstance
                 if (contentInstance == null)
                 {
-                    Console.WriteLine("DEBUG: ContentInstance is NULL", "Parser Debug");
+                    Console.WriteLine("DEBUG: ContentInstance is NULL");
                     return (null, null, false);
                 }
 
                 string content = contentInstance.Element(ns + "Content")?.Value;
-
-                // 🔍 DEBUG: Show extracted content
                 if (string.IsNullOrEmpty(content))
                 {
-                    Console.WriteLine("DEBUG: Content is NULL or empty", "Parser Debug");
+                    Console.WriteLine("DEBUG: Content is NULL or empty");
                     return (null, null, false);
-                }
-                else
-                {
-                    Console.WriteLine($"DEBUG: Extracted Content:\n\n{content}", "Parser Debug");
-                }
+                }              
+                //content = WebUtility.HtmlDecode(content).Trim();
 
                 // Parse the inner XML content (OrderUpdate)
                 var orderDoc = XDocument.Parse(content);
 
-                // 🔍 DEBUG: Check orderDoc root
+                //Check orderDoc root
                 if (orderDoc.Root == null)
                 {
                     Console.WriteLine("DEBUG: OrderDoc Root is NULL", "Parser Debug");
@@ -65,9 +59,7 @@ namespace Aplicação_cliente
 
                 string orderName = orderDoc.Root.Element("OrderName")?.Value;
                 string status = orderDoc.Root.Element("Status")?.Value;
-
-                // 🔍 DEBUG: Show extracted values
-                Console.WriteLine($"DEBUG: Extracted:\nOrderName: {orderName}\nStatus: {status}", "Parser Debug");
+               
 
                 if (!string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
                 {

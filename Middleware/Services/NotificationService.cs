@@ -27,7 +27,7 @@ namespace Middleware.Services
         public NotificationService(string connectionString, string xsdPath = null)
         {
             _connectionString = connectionString;
-            _xsdPath = xsdPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Schemas", "NotificationSchema.xsd");
+            _xsdPath = xsdPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Schemas", "NotificationsSchema.xsd");
 
             // Load XSD schema
             LoadXsdSchema();
@@ -75,7 +75,6 @@ namespace Middleware.Services
                 string xmlPayload = SerializeToXml(notification);
 
                 // DEBUG: Print and save XML
-                NotificationDebugHelper.PrintXml(xmlPayload);
                 NotificationDebugHelper.SaveXmlToFile(xmlPayload);
 
                 // Validate against XSD
@@ -172,7 +171,7 @@ namespace Middleware.Services
                 {
                     Indent = true,
                     OmitXmlDeclaration = false,
-                    Encoding = Encoding.UTF8
+                    Encoding = new UTF8Encoding(false)
                 };
 
                 // Create namespace settings to omit xsi and xsd namespaces
@@ -400,27 +399,11 @@ namespace Middleware.Services
 
                     string filePath = Path.Combine(debugFolder, fileName);
                     File.WriteAllText(filePath, xmlContent);
-
-                    Console.WriteLine($"[DEBUG] XML saved to: {filePath}");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[ERROR] Failed to save XML: {ex.Message}");
                 }
-            }
-
-            /// <summary>
-            /// Pretty print XML to console
-            /// </summary>
-            public static void PrintXml(string xmlContent)
-            {
-                Console.WriteLine("");
-                Console.WriteLine("╔═══════════════════════════════════════════════════════════╗");
-                Console.WriteLine("║              GENERATED XML NOTIFICATION                   ║");
-                Console.WriteLine("╚═══════════════════════════════════════════════════════════╝");
-                Console.WriteLine(xmlContent);
-                Console.WriteLine("═════════════════════════════════════════════════════════════");
-                Console.WriteLine("");
             }
         }
     }
