@@ -100,6 +100,32 @@ namespace Aplicação_cliente
             });
         }
 
+        private void SubscribeToOrder(string orderName)
+        {
+            if (client == null || !client.IsConnected)
+            {
+                return;
+            }
+
+            string topic = $"{app_name}/{orderName}";
+
+            // Verify if already subscribed
+            if (!subscribed_topics.Contains(topic))
+            {
+                try
+                {
+                    client.Subscribe(new string[] { topic },
+                        new byte[] { MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE });
+
+                    subscribed_topics.Add(topic);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error subscribing to {topic}: {ex.Message}");
+                }
+            }
+        }
+
         // Update the ListBox to show status next to order
         private void UpdateOrderStatusInListBox(string orderName, string status)
         {
@@ -386,7 +412,9 @@ namespace Aplicação_cliente
                         {
                             string container_name = ExtractName(container);
                             listBoxEncomendas.Items.Add(container_name + Environment.NewLine);
+                            SubscribeToOrder(container_name);
                         }
+                        
                     }
 
                     //MessageBox.Show($"{containers.Count} order(s) found.");

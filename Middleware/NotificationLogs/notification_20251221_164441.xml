@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Notification xmlns="http://schemas.somiod.com/notification">
+  <Evt>1</Evt>
+  <EventType>creation</EventType>
+  <Timestamp>2025-12-21T16:44:41</Timestamp>
+  <Resource>
+    <ContentInstance>
+      <ResourceName>status_639019322811342582</ResourceName>
+      <ContentType>application/xml</ContentType>
+      <Content>&lt;OrderUpdate&gt;
+                    &lt;OrderName&gt;encomenda_B1093A22&lt;/OrderName&gt;
+                    &lt;Status&gt;Delivered&lt;/Status&gt;
+                    &lt;Timestamp&gt;2025-12-21T16:44:41&lt;/Timestamp&gt;
+                    &lt;/OrderUpdate&gt;</Content>
+      <CreationDatetime>2025-12-21T16:44:41</CreationDatetime>
+    </ContentInstance>
+  </Resource>
+</Notification>
