@@ -27,7 +27,7 @@ namespace Middleware.Services
         public NotificationService(string connectionString, string xsdPath = null)
         {
             _connectionString = connectionString;
-            _xsdPath = xsdPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NotificationSchema.xsd");
+            _xsdPath = xsdPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Schemas", "NotificationSchema.xsd");
 
             // Load XSD schema
             LoadXsdSchema();
@@ -73,6 +73,10 @@ namespace Middleware.Services
 
                 // Serialize to XML
                 string xmlPayload = SerializeToXml(notification);
+
+                // DEBUG: Print and save XML
+                NotificationDebugHelper.PrintXml(xmlPayload);
+                NotificationDebugHelper.SaveXmlToFile(xmlPayload);
 
                 // Validate against XSD
                 if (!ValidateXml(xmlPayload))
@@ -171,11 +175,18 @@ namespace Middleware.Services
                     Encoding = Encoding.UTF8
                 };
 
-                using (var stringWriter = new StringWriter())
-                using (var xmlWriter = XmlWriter.Create(stringWriter, settings))
+                // Create namespace settings to omit xsi and xsd namespaces
+                var namespaces = new XmlSerializerNamespaces();
+                namespaces.Add("", "http://schemas.somiod.com/notification"); // Default namespace only
+
+                // USE MemoryStream INSTEAD OF StringWriter to get UTF-8
+                using (var memoryStream = new MemoryStream())
                 {
-                    serializer.Serialize(xmlWriter, notification);
-                    return stringWriter.ToString();
+                    using (var xmlWriter = XmlWriter.Create(memoryStream, settings))
+                    {
+                        serializer.Serialize(xmlWriter, notification, namespaces);
+                    }
+                    return Encoding.UTF8.GetString(memoryStream.ToArray());
                 }
             }
             catch (Exception ex)
@@ -361,5 +372,57 @@ namespace Middleware.Services
 
             return broker;
         }
+
+        /// <summary>
+        /// Helper methods for debugging XML notifications
+        /// </summary>
+        public static class NotificationDebugHelper
+        {
+            /// <summary>
+            /// Save XML notification to file for inspection
+            /// </summary>
+            public static void SaveXmlToFile(string xmlContent, string fileName = null)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(fileName))
+                    {
+                        fileName = $"notification_{DateTime.Now:yyyyMMdd_HHmmss}.xml";
+                    }
+
+                    string debugFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NotificationLogs");
+
+                    // Create folder if it doesn't exist
+                    if (!Directory.Exists(debugFolder))
+                    {
+                        Directory.CreateDirectory(debugFolder);
+                    }
+
+                    string filePath = Path.Combine(debugFolder, fileName);
+                    File.WriteAllText(filePath, xmlContent);
+
+                    Console.WriteLine($"[DEBUG] XML saved to: {filePath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] Failed to save XML: {ex.Message}");
+                }
+            }
+
+            /// <summary>
+            /// Pretty print XML to console
+            /// </summary>
+            public static void PrintXml(string xmlContent)
+            {
+                Console.WriteLine("");
+                Console.WriteLine("╔═══════════════════════════════════════════════════════════╗");
+                Console.WriteLine("║              GENERATED XML NOTIFICATION                   ║");
+                Console.WriteLine("╚═══════════════════════════════════════════════════════════╝");
+                Console.WriteLine(xmlContent);
+                Console.WriteLine("═════════════════════════════════════════════════════════════");
+                Console.WriteLine("");
+            }
+        }
     }
+
 }

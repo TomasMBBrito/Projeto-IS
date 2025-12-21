@@ -20,7 +20,7 @@ namespace Aplicação_cliente
     public partial class EncomendaForm : Form
     {
         string baseURI = @"http://localhost:61331/";
-        string app_name = "FnacClient_Vecna";
+        string app_name = "FnacClient_";
 
         private MqttClient client;
         private List<string> subscribed_topics = new List<string>();
@@ -65,8 +65,14 @@ namespace Aplicação_cliente
                     string xmlMessage = Encoding.UTF8.GetString(e.Message);
                     string topic = e.Topic;
 
+                    // 🔍 DEBUG: Show the raw XML first
+                    MessageBox.Show($"RAW XML RECEIVED:\n\n{xmlMessage}", "Debug - Raw XML");
+
                     // Parse the XML notification
                     var (orderName, status, success) = NotificationParser.ParseNotification(xmlMessage);
+
+                    // 🔍 DEBUG: Show what parser returned
+                    MessageBox.Show($"Parser Result:\nSuccess: {success}\nOrder: {orderName}\nStatus: {status}", "Debug - Parse Result");
 
                     if (success && !string.IsNullOrEmpty(orderName) && !string.IsNullOrEmpty(status))
                     {
@@ -88,6 +94,7 @@ namespace Aplicação_cliente
                     }
                     else
                     {
+                        MessageBox.Show($"Success: {success}; 1: {!string.IsNullOrEmpty(orderName)}; 2: {!string.IsNullOrEmpty(status)}");
                         // Fallback: show raw notification
                         MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {xmlMessage}");
                     }
@@ -140,35 +147,6 @@ namespace Aplicação_cliente
 
         private void EncomendaForm_Load(object sender, EventArgs e)
         {
-
-            var client_rest = new RestClient(baseURI);
-            var request = new RestRequest("api/somiod", Method.Post);
-            //request.AddHeader("content-type", "application/json");
-            var application = new CreateResourceRequest()
-            {
-                ResType = "application",
-                ResourceName = app_name
-                //ResType = "application"
-            };
-
-            Console.WriteLine(application.ResType);
-
-
-            string jsonBody = JsonConvert.SerializeObject(application);
-            request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
-            Console.WriteLine("JSON sendo enviado:");
-            Console.WriteLine(jsonBody);
-            var response = client_rest.Execute(request);
-            if (response.StatusCode == HttpStatusCode.Conflict)
-            {
-                //MessageBox.Show("Application already exists. Procede");
-                return;
-            }
-            else
-            {
-                MessageBox.Show("Error creating application: " + response.Content);
-                return;
-            }
         }
 
         private void btnAddToCart_Click(object sender, EventArgs e)
@@ -390,6 +368,60 @@ namespace Aplicação_cliente
                 {
                     return null;
                 }
+            }
+        }
+
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            string username = textBoxUtilizador.Text;
+            app_name = app_name + username;
+            var client_rest = new RestClient(baseURI);
+            var request = new RestRequest("api/somiod", Method.Post);
+            //request.AddHeader("content-type", "application/json");
+            var application = new CreateResourceRequest()
+            {
+                ResType = "application",
+                ResourceName = app_name
+                //ResType = "application"
+            };
+
+            Console.WriteLine(application.ResType);
+
+
+            string jsonBody = JsonConvert.SerializeObject(application);
+            request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
+            Console.WriteLine("JSON sendo enviado:");
+            Console.WriteLine(jsonBody);
+            var response = client_rest.Execute(request);
+            if (response.StatusCode == HttpStatusCode.Created)
+            {
+                textBoxProduto.Enabled = true;
+                product_quantity.Enabled = true;
+                btnAddToCart.Enabled = true;
+                listBoxProdutos.Enabled = true;
+                listBoxEncomendas.Enabled = true;
+                btnCreateOrder.Enabled = true;
+                textBoxUtilizador.Enabled = false;
+                btnLogin.Enabled = false;
+                //MessageBox.Show($"User App Created! User: {app_name}");
+            }
+            else if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                textBoxProduto.Enabled = true;
+                product_quantity.Enabled = true;
+                btnAddToCart.Enabled = true;
+                listBoxProdutos.Enabled = true;
+                listBoxEncomendas.Enabled = true;
+                btnCreateOrder.Enabled = true;
+                textBoxUtilizador.Enabled = false;
+                btnLogin.Enabled = false;
+                //MessageBox.Show("Application already exists. Procede");
+                return;
+            }
+            else
+            {
+                MessageBox.Show("Error creating application: " + response.Content);
+                return;
             }
         }
     }
