@@ -22,7 +22,9 @@ namespace Gestor_Armazem
 
         private Thread searchThread;
         private bool isSearching = false;
-        private int searchInterval = 5000; 
+        private int searchInterval = 5000;
+
+        private Dictionary<string, string> orderStatus = new Dictionary<string, string>();
         public GestorEncomendaForm()
         {
             InitializeComponent();
@@ -143,45 +145,6 @@ namespace Gestor_Armazem
             }
         }
 
-        private void CriarAplicacao()
-        {
-            var client_rest = new RestClient(baseURI);
-            var request = new RestRequest("", Method.Post);
-            //request.AddHeader("content-type", "application/json");
-            var application = new CreateResourceRequest()
-            {
-                ResType = "application",
-                ResourceName = app_name
-            };
-
-            Console.WriteLine(application.ResType);
-
-
-            string jsonBody = JsonConvert.SerializeObject(application);
-            request.AddParameter("application/json", jsonBody, ParameterType.RequestBody);
-            Console.WriteLine("JSON sendo enviado:");
-            Console.WriteLine(jsonBody);
-            var response = client_rest.Execute(request);
-            if (response.StatusCode == HttpStatusCode.Created)
-            {
-                if (response.Content != null)
-                {
-                    //MessageBox.Show("Response Content: " + response.Content);
-                }
-
-            }
-            else if (response.StatusCode == HttpStatusCode.Conflict)
-            {
-                //MessageBox.Show("Application already exists. Procede");
-                return;
-            }
-            else
-            {
-                MessageBox.Show("Error creating application: " + response.Content);
-                return;
-            }
-        }
-
         private void GestorEncomendaForm_Load(object sender, EventArgs e)
         {
             //CriarAplicacao();
@@ -287,6 +250,25 @@ namespace Gestor_Armazem
             try
             {
                 var clientRest = new RestClient(baseURI);
+                var requestGetContentInstance = new RestRequest($"/{selectedApp}/{selectedOrder}", Method.Get);
+                requestGetContentInstance.AddHeader("somiod-discovery", "content-instance");
+                requestGetContentInstance.RequestFormat = DataFormat.Json;
+
+                var responseGetContentInstace = clientRest.Execute(requestGetContentInstance);
+
+                if (responseGetContentInstace.StatusCode == HttpStatusCode.OK && responseGetContentInstace.Content != null)
+                {
+                    var ciName = JsonConvert.DeserializeObject<List<string>>(responseGetContentInstace.Content);
+                    var requestDeleteContentInstance = new RestRequest($"/{selectedApp}/{selectedOrder}/{ExtractName(ciName[0])}", Method.Delete);
+
+                    var responseDeleteContentInstance = clientRest.Execute(requestDeleteContentInstance);
+
+                    if(responseGetContentInstace.StatusCode != HttpStatusCode.OK)
+                    {
+                        MessageBox.Show("Error deleting the existing content-instance");
+                    }
+                }
+                    
                 var request = new RestRequest($"/{selectedApp}/{selectedOrder}", Method.Post);
 
                 // Create XML content with order name
@@ -311,7 +293,10 @@ namespace Gestor_Armazem
                 if (response.StatusCode == HttpStatusCode.Created)
                 {
                     //MessageBox.Show($"Order updated to: {status}\n\nThe client will be notified via MQTT!");
+                    orderStatus[selectedOrder] = status;
                     labelOrderStatus.Text = "Order Status: " + status;
+
+                    UpdateButtonsForStatus(status);
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -326,6 +311,51 @@ namespace Gestor_Armazem
             {
                 MessageBox.Show("Error on processing order: " + ex.Message);
             }
+        }
+
+        private void listBoxContainers_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (listBoxContainers.SelectedItem == null)
+            {
+                SetButtonStates(false, false, false);
+                labelOrderStatus.Text = "Order Status: None selected";
+                return;
+            }
+
+            string selectedOrder = listBoxContainers.SelectedItem.ToString();
+            string status = orderStatus.ContainsKey(selectedOrder) ? orderStatus[selectedOrder] : "Pending";
+
+            labelOrderStatus.Text = "Order Status: " + status;
+            UpdateButtonsForStatus(status);
+        }
+
+        private void UpdateButtonsForStatus(string status)
+        {
+            switch (status)
+            {
+                case "Pending":
+                    SetButtonStates(true, false, false);
+                    break;
+                case "Processing":
+                    SetButtonStates(false, true, false);
+                    break;
+                case "Sending":
+                    SetButtonStates(false, false, true);
+                    break;
+                case "Delivered":
+                    SetButtonStates(false, false, false);
+                    break;
+                default:
+                    SetButtonStates(true, false, false);
+                    break;
+            }
+        }
+
+        private void SetButtonStates(bool process, bool ship, bool deliver)
+        {
+            btnProcessOrder.Enabled = process;
+            btnShipOrder.Enabled = ship;
+            btnDeliverOrder.Enabled = deliver;
         }
     }
 }

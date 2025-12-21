@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Linq;
@@ -483,6 +484,46 @@ namespace Aplicação_cliente
             {
                 MessageBox.Show("Error creating application: " + response.Content);
                 return;
+            }
+        }
+
+        private void GetStatus_Click(object sender, EventArgs e)
+        {
+            string selectedOrder = listBoxEncomendas.SelectedItem.ToString();
+            var clientRest = new RestClient(baseURI);
+            var requestDiscoverContentInstance = new RestRequest($"api/somiod/{app_name}/{selectedOrder}", Method.Get);
+            requestDiscoverContentInstance.AddHeader("somiod-discovery", "content-instance");
+            requestDiscoverContentInstance.RequestFormat = DataFormat.Json;
+
+            var responseDiscoverContentInstace = clientRest.Execute(requestDiscoverContentInstance);
+
+            if (responseDiscoverContentInstace.StatusCode == HttpStatusCode.OK && responseDiscoverContentInstace.Content != null)
+            {
+                var ciName = JsonConvert.DeserializeObject<List<string>>(responseDiscoverContentInstace.Content);
+                var requestGetContentInstance = new RestRequest($"{ciName[0]}", Method.Get);
+
+                var responseGetContentInstance = clientRest.Execute(requestGetContentInstance);
+
+                if (responseGetContentInstance.StatusCode != HttpStatusCode.OK)
+                {
+                    MessageBox.Show("Error getting the existing content-instance");
+                }
+                ;
+                JsonDocument doc = JsonDocument.Parse(responseGetContentInstance.Content);
+                JsonElement root = doc.RootElement;
+
+                string content = root.GetProperty("content").GetString();
+
+                string status = content.Split('\n')
+                    .Where(line => line.Trim().StartsWith("<Status>"))
+                    .Select(line => line.Trim())
+                    .Select(line => line.Substring(
+                        line.IndexOf('>') + 1,                       // After opening tag
+                        line.LastIndexOf('<') - line.IndexOf('>') - 1 // Before closing tag
+                     ))
+                    .FirstOrDefault();
+
+                UpdateOrderStatusInListBox(selectedOrder, status);
             }
         }
     }
