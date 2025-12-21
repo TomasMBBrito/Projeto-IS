@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://schemas.somiod.com/notification"
+           xmlns="http://schemas.somiod.com/notification"
+           elementFormDefault="qualified">
+
+	<!-- Root element for notifications -->
+	<xs:element name="Notification">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Evt" type="xs:int"/>
+				<xs:element name="EventType" type="EventTypeEnum"/>
+				<xs:element name="Timestamp" type="xs:dateTime"/>
+				<xs:element name="Resource" type="ResourceType"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<!-- Event type enumeration -->
+	<xs:simpleType name="EventTypeEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="creation"/>
+			<xs:enumeration value="deletion"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Resource type (can be ContentInstance or Subscription) -->
+	<xs:complexType name="ResourceType">
+		<xs:choice>
+			<xs:element name="ContentInstance" type="ContentInstanceType"/>
+			<xs:element name="Subscription" type="SubscriptionType"/>
+		</xs:choice>
+	</xs:complexType>
+
+	<!-- Content Instance structure -->
+	<xs:complexType name="ContentInstanceType">
+		<xs:sequence>
+			<xs:element name="ResourceName" type="xs:string"/>
+			<xs:element name="ContentType" type="xs:string"/>
+			<xs:element name="Content" type="xs:string"/>
+			<xs:element name="CreationDatetime" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Subscription structure -->
+	<xs:complexType name="SubscriptionType">
+		<xs:sequence>
+			<xs:element name="ResourceName" type="xs:string"/>
+			<xs:element name="Evt" type="xs:int"/>
+			<xs:element name="Endpoint" type="xs:string"/>
+			<xs:element name="CreationDatetime" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+
+</xs:schema>

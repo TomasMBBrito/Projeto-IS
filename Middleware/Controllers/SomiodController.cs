@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.SqlClient;
 using System.Diagnostics.Eventing.Reader;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -25,7 +26,8 @@ namespace Middleware.Controllers
         // Constructor
         public SomiodController()
         {
-            _notificationService = new NotificationService(Connectstring);
+            string xsdPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Schemas", "NotificationsSchema.xsd");
+            _notificationService = new NotificationService(Connectstring, xsdPath);
         }
 
         // ============================================
@@ -135,6 +137,10 @@ namespace Middleware.Controllers
                             return BadRequest("Invalid somiod-discover header.");
                         }
 
+                        if(paths.Count == 0)
+                        {
+                            return NotFound();
+                        }
                         return Ok(paths);
                     }
                     else
@@ -317,6 +323,10 @@ namespace Middleware.Controllers
                             return BadRequest("Invalid somiod-discover header.");
                         }
 
+                        if (paths.Count == 0)
+                        {
+                            return NotFound();
+                        }
                         return Ok(paths);
                     }
                     else
@@ -724,7 +734,10 @@ namespace Middleware.Controllers
                         {
                             return BadRequest("Invalid somiod-discover header.");
                         }
-
+                        if (paths.Count == 0)
+                        {
+                            return NotFound();
+                        }
                         return Ok(paths);
                     }
                     else
