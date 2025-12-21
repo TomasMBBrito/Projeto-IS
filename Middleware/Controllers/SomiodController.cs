@@ -26,7 +26,7 @@ namespace Middleware.Controllers
         // Constructor
         public SomiodController()
         {
-            string xsdPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NotificationSchema.xsd");
+            string xsdPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Schemas", "NotificationsSchema.xsd");
             _notificationService = new NotificationService(Connectstring, xsdPath);
         }
 
@@ -137,6 +137,10 @@ namespace Middleware.Controllers
                             return BadRequest("Invalid somiod-discover header.");
                         }
 
+                        if(paths.Count == 0)
+                        {
+                            return NotFound();
+                        }
                         return Ok(paths);
                     }
                     else
@@ -319,6 +323,10 @@ namespace Middleware.Controllers
                             return BadRequest("Invalid somiod-discover header.");
                         }
 
+                        if (paths.Count == 0)
+                        {
+                            return NotFound();
+                        }
                         return Ok(paths);
                     }
                     else
@@ -726,7 +734,10 @@ namespace Middleware.Controllers
                         {
                             return BadRequest("Invalid somiod-discover header.");
                         }
-
+                        if (paths.Count == 0)
+                        {
+                            return NotFound();
+                        }
                         return Ok(paths);
                     }
                     else

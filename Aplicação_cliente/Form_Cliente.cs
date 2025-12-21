@@ -90,7 +90,7 @@ namespace Aplicação_cliente
                     {
                         //MessageBox.Show($"Success: {success}; 1: {!string.IsNullOrEmpty(orderName)}; 2: {!string.IsNullOrEmpty(status)}");
                         // Fallback: show raw notification
-                        //MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {xmlMessage}");
+                        MessageBox.Show($"Notification received!\nTopic: {topic}\nMessage: {xmlMessage}");
                     }
                 }
                 catch (Exception ex)
@@ -124,6 +124,7 @@ namespace Aplicação_cliente
 
         private void EncomendaForm_Load(object sender, EventArgs e)
         {
+            InitializeMqtt();
         }
 
         private void btnAddToCart_Click(object sender, EventArgs e)
@@ -173,7 +174,6 @@ namespace Aplicação_cliente
                 return;
             }
 
-            InitializeMqtt();
             if (client == null || !client.IsConnected)
             {
                 MessageBox.Show("MQTT client is not connected. Please restart the application.");
@@ -348,6 +348,65 @@ namespace Aplicação_cliente
             }
         }
 
+        private string ExtractName(string path)
+        {
+            // Extract application name from path like "/api/somiod/FnacClient_Vecna"
+            if (string.IsNullOrEmpty(path)) return null;
+
+            var parts = path.Split('/');
+            return parts.Length > 0 ? parts[parts.Length - 1] : null;
+        }
+
+        private void loadOrders(string username)
+        {
+            try
+            {
+                var clientRest = new RestClient(baseURI);
+                var request = new RestRequest($"api/somiod/{username}", Method.Get);
+                request.AddHeader("somiod-discovery", "container");
+                request.RequestFormat = DataFormat.Json;
+
+                var response = clientRest.Execute(request);
+
+                if (response.StatusCode == HttpStatusCode.OK && response.Content != null)
+                {
+                    var containers = JsonConvert.DeserializeObject<List<string>>(response.Content);
+
+                    listBoxEncomendas.Items.Clear();
+
+                    if (containers == null || containers.Count == 0)
+                    {
+                        MessageBox.Show("Orders not found.");
+                        return;
+                    }
+
+                    foreach (var container in containers)
+                    {                       
+                        if (!string.IsNullOrEmpty(container))
+                        {
+                            string container_name = ExtractName(container);
+                            listBoxEncomendas.Items.Add(container_name + Environment.NewLine);
+                        }
+                    }
+
+                    //MessageBox.Show($"{containers.Count} order(s) found.");
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    MessageBox.Show("App not found or without orders.");
+                    listBoxEncomendas.Items.Clear();
+                }
+                else
+                {
+                    MessageBox.Show("Error on finding orders: " + response.Content);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error on finding orders: " + ex.Message);
+            }
+        }
+
         private void btnLogin_Click(object sender, EventArgs e)
         {
             string username = textBoxUtilizador.Text;
@@ -389,6 +448,7 @@ namespace Aplicação_cliente
                 textBoxUtilizador.Enabled = false;
                 btnLogin.Enabled = false;
                 //MessageBox.Show("Application already exists. Procede");
+                loadOrders(app_name);
                 return;
             }
             else

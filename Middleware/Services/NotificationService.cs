@@ -40,14 +40,25 @@ namespace Middleware.Services
         {
             try
             {
+
+                // Verificar se o ficheiro existe
+                if (!File.Exists(_xsdPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[XSD ERROR] Ficheiro não encontrado: {_xsdPath}");
+                    _schemaSet = null;
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[XSD] Ficheiro encontrado: {new FileInfo(_xsdPath).Length} bytes");
+
                 _schemaSet = new XmlSchemaSet();
                 _schemaSet.Add("http://schemas.somiod.com/notification", _xsdPath);
-                _schemaSet.Compile();
-                Console.WriteLine("[INFO] XSD Schema loaded successfully");
+                _schemaSet.Compile();                
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[WARNING] Failed to load XSD schema: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[XSD ERROR] Falha ao carregar schema: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[XSD ERROR] Stack: {ex.StackTrace}");
                 _schemaSet = null;
             }
         }
@@ -80,11 +91,11 @@ namespace Middleware.Services
                 // Validate against XSD
                 if (!ValidateXml(xmlPayload))
                 {
-                    Console.WriteLine("[ERROR] XML validation failed. Notification not sent.");
+                    System.Diagnostics.Debug.WriteLine("[ERROR] XML validation failed. Notification not sent.");
                     return;
                 }
 
-                Console.WriteLine("[SUCCESS] XML validated successfully");
+                System.Diagnostics.Debug.WriteLine("[SUCCESS] XML validated successfully");
 
                 // Trigger notifications for each subscription
                 foreach (var subscription in subscriptions)
@@ -217,7 +228,7 @@ namespace Middleware.Services
                 bool isValid = true;
                 settings.ValidationEventHandler += (sender, args) =>
                 {
-                    Console.WriteLine($"[VALIDATION ERROR] {args.Severity}: {args.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[VALIDATION ERROR] {args.Severity}: {args.Message}");
                     isValid = false;
                 };
 
@@ -226,7 +237,7 @@ namespace Middleware.Services
                 {
                     while (xmlReader.Read()) { }
                 }
-
+                System.Diagnostics.Debug.WriteLine($"[VALIDATION SUCESS]");
                 return isValid;
             }
             catch (Exception ex)
